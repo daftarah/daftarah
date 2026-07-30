@@ -1704,6 +1704,33 @@ async function guardAdmin(){
     if(S.mode==="admin" && S.doc) renderAdmin(); else if(S.tpl) renderClient();
   }, 180); });
 })();
+<script>
+  // 1. الاتصال بسحابة Supabase
+  const SUPABASE_URL = 'https://nkmslvhxdoyrekoontvd.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_MxemmQgGkV5xQs1GfQlqbg_6Nlh...';
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // 2. دالة لرفع ملف الكشف وتخزينه سحابياً ليظهر على أي جهاز
+  async function uploadFileToSupabase(fileObject, fileName) {
+      const { data, error } = await supabaseClient
+          .storage
+          .from('files') // اسم المجلد الذي أنشأته في Supabase
+          .upload(fileName, fileObject, {
+              upsert: true
+          });
+
+      if (error) {
+          console.error('خطأ في الرفع:', error.message);
+          return null;
+      } else {
+          const { data: publicUrlData } = supabaseClient
+              .storage
+              .from('files')
+              .getPublicUrl(fileName);
+          
+          return publicUrlData.publicUrl; // الرابط السحابي النهائي الذي يعمل بكل الأجهزة
+      }
+  }
 </script>
 </body>
 </html>
