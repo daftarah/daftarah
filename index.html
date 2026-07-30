@@ -240,7 +240,7 @@ input[type=file]{display:none}
       <div class="pane-title" style="padding-inline:0">تخزين القوالب (Supabase)</div>
       <div class="field">
         <label class="lbl" for="sbUrl">رابط المشروع</label>
-        <input class="in" id="sbUrl" placeholder="https://xxxx.supabase.co" style="direction:ltr;text-align:left;font-family:var(--mono);font-size:11.5px">
+        <input class="in" id="sbUrl" placeholder="https://xxxx.supabase.co" title="من Project Settings ← API ← Project URL" style="direction:ltr;text-align:left;font-family:var(--mono);font-size:11.5px">
       </div>
       <div class="field">
         <label class="lbl" for="sbKey">مفتاح anon</label>
@@ -252,6 +252,7 @@ input[type=file]{display:none}
       </div>
       <button class="btn sm" id="sbSave" style="width:100%;justify-content:center">حفظ وفحص الاتصال</button>
       <p class="hint" id="sbState">اتركه فارغاً للعمل بدون تخزين قوالب.</p>
+      <p class="hint">الرابط من Project Settings ← API ← Project URL، لا رابط لوحة التحكم ولا رابط موقعك.</p>
 
       <div class="pane-title" style="padding-inline:0">حماية لوحة التحكم</div>
       <div class="field">
@@ -1001,14 +1002,37 @@ const sb = { url:"", key:"", bucket:"templates" };
 const sbOn = () => !!(sb.url && sb.key);
 const sbPublic = (base, bucket, code) => `${base}/storage/v1/object/public/${bucket}/${code}.json`;
 
+// People paste the dashboard link, the site link, or a path. Reduce whatever
+// arrives to the project's API origin.
+function normalizeSbUrl(v){
+  v = (v||"").trim();
+  if(!v) return "";
+  if(!/^https?:\/\//i.test(v)) v = "https://" + v;
+  let u;
+  try{ u = new URL(v); }catch(e){ return ""; }
+  const ref = u.pathname.match(/\/project\/([a-z0-9]{16,})/i);
+  if(/(^|\.)supabase\.(com|io)$/i.test(u.hostname) && ref) return `https://${ref[1]}.supabase.co`;
+  return u.origin;
+}
+function sbAdvice(status){
+  if(status === 405) return "هذا العنوان ليس عنوان Supabase API. خذه من Project Settings ← API ← Project URL، وشكله https://xxxx.supabase.co";
+  if(status === 404) return "اسم الحاوية غير موجود. تأكد من الاسم في Storage.";
+  if(status === 400 || status === 403) return "الرفع مرفوض. تأكد من مفتاح anon ومن وجود سياسة INSERT على الحاوية.";
+  if(status === 401) return "المفتاح غير صحيح. انسخ anon public key من Project Settings ← API.";
+  return "";
+}
 async function sbPut(code, json){
-  const r = await fetch(`${sb.url}/storage/v1/object/${sb.bucket}/${code}.json`, {
+  const target = `${sb.url}/storage/v1/object/${sb.bucket}/${code}.json`;
+  const r = await fetch(target, {
     method:"POST",
     headers:{ apikey:sb.key, Authorization:"Bearer "+sb.key,
               "content-type":"application/json", "x-upsert":"true" },
     body: json
   });
-  if(!r.ok) throw new Error("HTTP " + r.status + " — " + (await r.text()).slice(0,140));
+  if(!r.ok){
+    const tip = sbAdvice(r.status);
+    throw new Error(`HTTP ${r.status} على ${target}${tip ? " — " + tip : ""}`);
+  }
   return true;
 }
 async function sbGet(base, bucket, code){
@@ -1020,13 +1044,17 @@ async function sbGet(base, bucket, code){
   }catch(e){ return null; }
 }
 $("sbSave").onclick = async ()=>{
-  sb.url = ($("sbUrl").value||"").trim().replace(/\/+$/,"");
+  sb.url = normalizeSbUrl($("sbUrl").value);
+  $("sbUrl").value = sb.url;
   sb.key = ($("sbKey").value||"").trim();
   sb.bucket = (($("sbBucket").value||"").trim()) || "templates";
   await store.set("sbUrl", sb.url, true);
   await store.set("sbBucket", sb.bucket, true);
   await store.set("sbKey", sb.key, false);
   if(!sbOn()){ $("sbState").textContent = "يعمل بدون تخزين قوالب."; return; }
+  if(!/supabase\.(co|in|red|net)$/i.test(new URL(sb.url).hostname)){
+    $("sbState").textContent = "تنبيه: هذا العنوان لا يشبه عنوان Supabase. الصحيح من Project Settings ← API ويكون https://xxxx.supabase.co";
+  }
   $("sbState").textContent = "جارٍ الفحص…";
   try{
     await sbPut("__probe", JSON.stringify({ pdf:"", probe:true, at:Date.now() }));
