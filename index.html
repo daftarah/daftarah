@@ -288,6 +288,7 @@ input[type=file]{display:none}
   <section class="col">
     <div class="pane-title" id="clientTitle">تعبئة النموذج</div>
     <div class="pane">
+      <p class="note hidden" id="loadNote" style="margin-bottom:14px"></p>
       <div id="codeEntry">
         <p class="note" style="margin-bottom:14px">أدخل رمز القالب الذي وصلك، أو افتح ملف القالب المحفوظ.</p>
         <div class="field">
@@ -929,6 +930,21 @@ async function srvCall(params){
   if(!r.ok) throw new Error("HTTP "+r.status);
   return await r.json();
 }
+async function srvPutTpl(code, json){
+  const u = new URL(srv.url);
+  u.searchParams.set("a","tplput"); u.searchParams.set("key",srv.key); u.searchParams.set("code",code);
+  const r = await fetch(u.toString(), { method:"POST", body:json, headers:{ "content-type":"application/json" } });
+  if(!r.ok) throw new Error("HTTP "+r.status);
+  return await r.json();
+}
+async function srvGetTpl(code){
+  const u = new URL(srv.url);
+  u.searchParams.set("a","tplget"); u.searchParams.set("code",code);
+  const r = await fetch(u.toString());
+  if(!r.ok) return null;
+  const t = await r.json();
+  return (t && t.pdf) ? t : null;
+}
 $("srvSave").onclick = async ()=>{
   srv.url = ($("srvUrl").value||"").trim().replace(/\/+$/,"");
   srv.key = ($("srvKey").value||"").trim();
@@ -1189,7 +1205,8 @@ function buildShareUrl(code){
   let base = ($("modalBase").value || "").trim();
   if(!base && /^https?:$/.test(location.protocol)) base = location.origin + location.pathname;
   base = base.split("#")[0].trim();
-  return (base && code) ? base + "#t=" + code : "";
+  if(!base || !code) return "";
+  return base + "#t=" + code + (srv.url ? "&s=" + encodeURIComponent(srv.url) : "");
 }
 function refreshShareLink(){
   const url = buildShareUrl(curCode);
@@ -1255,14 +1272,22 @@ $("makeLink").onclick = async ()=>{
     return;
   }
   try{
-    if(!await store.set("tpl:"+code, json, true)) throw new Error("store");
-    if(tpl.lock) await store.set("tpl:"+S.openCode, JSON.stringify(tplOpen), true);
-    $("shareHint").textContent = url
-      ? "الرابط جاهز. يعمل ما دامت الأداة منشورة."
-      : "القالب محفوظ. الصق عنوان الأداة أعلاه ليكتمل الرابط.";
+    if(srvOn()){
+      await srvPutTpl(code, json);
+      if(tpl.lock) await srvPutTpl(S.openCode, JSON.stringify(tplOpen));
+      $("shareHint").textContent = url
+        ? "القالب محفوظ على سيرفرك. الرابط يفتح جاهزاً من أي جهاز."
+        : "القالب محفوظ على سيرفرك. الصق عنوان الأداة أعلاه ليكتمل الرابط.";
+    } else {
+      if(!await store.set("tpl:"+code, json, true)) throw new Error("store");
+      if(tpl.lock) await store.set("tpl:"+S.openCode, JSON.stringify(tplOpen), true);
+      $("shareHint").textContent = store.kind === "native"
+        ? "القالب محفوظ. الرابط يعمل ما دامت الأداة منشورة."
+        : "تنبيه: القالب محفوظ في هذا المتصفح فقط، فلن يفتح عند العميل. اربط سيرفراً، أو انشر الأداة، أو استخدم «صفحة العميل» بالأسفل.";
+    }
     if(url){ $("shareLink").focus(); $("shareLink").select(); }
   }catch(err){
-    $("shareHint").textContent = "تعذّر حفظ القالب. استخدم تنزيل صفحة العميل بالأسفل.";
+    $("shareHint").textContent = "تعذّر حفظ القالب: " + err.message + " — استخدم تنزيل صفحة العميل بالأسفل.";
   }
 };
 $("closeModal").onclick = ()=> $("linkModal").classList.add("hidden");
@@ -1303,14 +1328,22 @@ $("loadCode").onclick = async ()=>{
   await loadByCode(code);
 };
 async function loadByCode(code){
-  if(!store.ok) return toast("فتح الرابط غير متاح هنا. اطلب ملف القالب.", true);
-  $("loadCode").disabled=true;
+  $("loadCode").disabled = true;
+  $("loadNote").classList.remove("hidden");
+  $("loadNote").textContent = "جارٍ تحميل القالب…";
   try{
+    if(srv.url){
+      const t = await srvGetTpl(code);
+      if(t){ await useTemplate(t); $("loadNote").classList.add("hidden"); return true; }
+    }
     const r = await store.get("tpl:"+code, true);
-    if(!r || !r.value) throw 0;
-    await useTemplate(JSON.parse(r.value));
-  }catch(e){ toast("لم نجد قالباً بهذا الرمز. تأكد من الرمز مع من أرسله.", true); }
-  $("loadCode").disabled=false;
+    if(r && r.value){ await useTemplate(JSON.parse(r.value)); $("loadNote").classList.add("hidden"); return true; }
+    throw new Error("not found");
+  }catch(e){
+    $("codeEntry").classList.remove("hidden");
+    $("loadNote").textContent = "لم نجد قالباً بهذا الرمز. تأكد من الرابط مع من أرسله.";
+  }finally{ $("loadCode").disabled = false; }
+  return false;
 }
 $("pasteToggle").onclick = ()=> $("pasteBox").classList.toggle("hidden");
 $("pasteLoad").onclick = async ()=>{
@@ -1645,10 +1678,13 @@ async function guardAdmin(){
     catch(err){ toast("تعذّر فتح القالب.", true); }
   } else {
     const m = location.hash.match(/t=([A-Z0-9]{4,10})/i);
+    const sm = location.hash.match(/[#&]s=([^&]+)/);
+    if(sm){ try{ srv.url = decodeURIComponent(sm[1]); }catch(e){} }
     if(m){
       S.linked = true;
       $("modeSwitch").classList.add("hidden");
       setMode("client");
+      $("codeEntry").classList.add("hidden");     // the link already names the template
       $("codeIn").value = m[1].toUpperCase();
       await loadByCode(m[1].toUpperCase());
     }

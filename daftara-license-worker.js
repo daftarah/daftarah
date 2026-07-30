@@ -10,6 +10,8 @@
  *   ?a=check&code=1234                          ← عام: يفعّل الرمز أول مرة ويعيد تاريخ الانتهاء
  *   ?a=issue&key=ADMIN_KEY&n=10&days=365&len=4  ← إداري: توليد أكواد
  *   ?a=list&key=ADMIN_KEY                       ← إداري: قائمة الأكواد وحالاتها
+ *   ?a=tplget&code=ABC123                       ← عام: جلب قالب ليفتحه العميل
+ *   POST ?a=tplput&key=ADMIN_KEY&code=ABC123     ← إداري: رفع قالب (الجسم = JSON القالب)
  *   ?a=revoke&key=ADMIN_KEY&code=1234           ← إداري: إيقاف رمز
  *   ?a=extend&key=ADMIN_KEY&code=1234&days=365  ← إداري: تجديد رمز
  */
@@ -26,7 +28,7 @@ export default {
     const headers = {
       "content-type": "application/json; charset=utf-8",
       "access-control-allow-origin": "*",
-      "access-control-allow-methods": "GET,OPTIONS",
+      "access-control-allow-methods": "GET,POST,OPTIONS",
       "access-control-allow-headers": "*",
       "cache-control": "no-store",
     };
@@ -71,6 +73,28 @@ export default {
           ? { ok: true, until }
           : { ok: false, msg: "انتهت صلاحية هذا الرمز." }
       );
+    }
+
+    // ── عام: جلب قالب ──
+    if (action === "tplget") {
+      const code = (q.get("code") || "").trim();
+      if (!code) return json({ ok: false, msg: "أدخل رمز القالب." }, 400);
+      const raw = await env.LIC.get("t:" + code);
+      if (!raw) return json({ ok: false, msg: "لم نجد قالباً بهذا الرمز." }, 404);
+      return new Response(raw, { headers });
+    }
+
+    // ── إداري: رفع قالب ──
+    if (action === "tplput") {
+      if (!isAdmin()) return json({ error: "unauthorized" }, 401);
+      if (request.method !== "POST") return json({ error: "POST required" }, 405);
+      const code = (q.get("code") || "").trim();
+      if (!code) return json({ error: "code required" }, 400);
+      const body = await request.text();
+      if (!body || body.length > 20 * 1024 * 1024)
+        return json({ error: "empty or too large" }, 413);
+      await env.LIC.put("t:" + code, body);
+      return json({ ok: true, code, size: body.length });
     }
 
     // ── إداري: توليد أكواد ──
