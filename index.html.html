@@ -1,0 +1,1672 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>دفترة · الكتابة على ملفات PDF</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600&family=Reem+Kufi:wght@400;600;700&family=Cairo:wght@400;700&family=Tajawal:wght@400;700&family=Almarai:wght@400;700&family=Amiri:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<style>
+:root{
+  --ink:#0E141E; --panel:#151D2A; --panel2:#1A2432; --edge:#26303F; --edge2:#334154;
+  --gold:#D8B25C; --gold-soft:rgba(216,178,92,.14); --gold-dim:#8C7333;
+  --azure:#5A93F2; --danger:#E3706A; --ok:#5BBE94;
+  --text:#E9EDF4; --muted:#8B98AA; --muted2:#5E6B7D;
+  --r:10px; --r-sm:6px;
+  --ui:"Readex Pro","Segoe UI",Tahoma,sans-serif;
+  --display:"Reem Kufi","Segoe UI",Tahoma,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--ink);color:var(--text);font-family:var(--ui);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--azure);outline-offset:2px}
+
+/* ── shell ── */
+.app{display:flex;flex-direction:column;min-height:100vh}
+header{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--panel);border-bottom:1px solid var(--edge);position:sticky;top:0;z-index:40;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-size:19px;font-weight:700;letter-spacing:.5px}
+.brand .seal{width:26px;height:26px;border:1.5px solid var(--gold);border-radius:50%;display:grid;place-items:center;color:var(--gold);font-size:12px;font-weight:700}
+.brand small{font-family:var(--ui);font-weight:300;font-size:12px;color:var(--muted);letter-spacing:0}
+.spacer{flex:1}
+.switch{display:flex;background:var(--ink);border:1px solid var(--edge);border-radius:var(--r);padding:3px;gap:2px}
+.switch button{background:none;border:0;padding:7px 16px;border-radius:7px;color:var(--muted);cursor:pointer;font-size:13px}
+.switch button[aria-selected="true"]{background:var(--gold);color:#1a1408;font-weight:500}
+
+/* ── buttons ── */
+.btn{text-decoration:none;background:var(--panel2);border:1px solid var(--edge2);border-radius:var(--r-sm);padding:8px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:border-color .15s,background .15s}
+.btn:hover{border-color:var(--gold-dim);background:#212c3c}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.primary{background:var(--gold);border-color:var(--gold);color:#1a1408;font-weight:500}
+.btn.primary:hover{background:#e6c073}
+.btn.ghost{background:none;border-color:transparent;color:var(--muted);padding:6px 8px}
+.btn.ghost:hover{color:var(--text);background:var(--panel2)}
+.btn.danger:hover{border-color:var(--danger);color:var(--danger);background:rgba(227,112,106,.08)}
+.btn.sm{padding:5px 10px;font-size:12.5px}
+
+/* ── layout ── */
+main{flex:1;display:grid;gap:1px;background:var(--edge);grid-template-columns:280px 1fr 300px;min-height:0}
+main.client{grid-template-columns:360px 1fr}
+.col{background:var(--ink);overflow-y:auto;max-height:calc(100vh - 57px)}
+.col.stage{background:#0A0F17;display:flex;flex-direction:column;align-items:center;padding:22px 18px 40px;overflow:auto}
+.pane-title{font-size:11px;letter-spacing:1.6px;color:var(--muted2);text-transform:uppercase;padding:16px 16px 8px;font-weight:500}
+.pane{padding:0 16px 20px}
+
+/* ── field list ── */
+.flist{display:flex;flex-direction:column;gap:6px}
+.fitem{display:flex;align-items:center;gap:10px;padding:9px 10px;background:var(--panel);border:1px solid var(--edge);border-radius:var(--r-sm);cursor:pointer;text-align:right;width:100%}
+.fitem:hover{border-color:var(--edge2)}
+.fitem[aria-current="true"]{border-color:var(--gold);background:var(--gold-soft)}
+.fitem .no{font-family:var(--mono);font-size:11px;color:var(--gold);border:1px solid var(--gold-dim);border-radius:4px;min-width:22px;height:20px;display:grid;place-items:center;flex:none}
+.fitem .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fitem .pg{font-family:var(--mono);font-size:11px;color:var(--muted2)}
+.tt{font-size:9.5px;color:var(--azure);border:1px solid var(--azure);border-radius:4px;padding:1px 5px;flex:none}
+.imgrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.thumb{height:46px;width:auto;max-width:110px;border-radius:6px;border:1px solid var(--edge);object-fit:cover}
+
+/* ── inspector ── */
+.grp{border-top:1px solid var(--edge);padding:14px 0}
+.grp:first-child{border-top:0}
+.lbl{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+.in{width:100%;background:var(--panel);border:1px solid var(--edge);border-radius:var(--r-sm);padding:8px 10px}
+.in:focus{border-color:var(--azure);outline:none}
+textarea.in{resize:vertical;min-height:70px;line-height:1.7}
+.row{display:flex;gap:8px}
+.row>*{flex:1;min-width:0}
+.field{margin-bottom:10px}
+.seg{display:flex;border:1px solid var(--edge);border-radius:var(--r-sm);overflow:hidden}
+.seg button{flex:1;background:var(--panel);border:0;padding:7px 0;cursor:pointer;color:var(--muted);font-size:12.5px;border-inline-start:1px solid var(--edge)}
+.seg button:first-child{border-inline-start:0}
+.seg button[aria-pressed="true"]{background:var(--gold-soft);color:var(--gold)}
+.chk{display:flex;align-items:center;gap:8px;cursor:pointer;padding:5px 0;font-size:13px}
+.chk input{accent-color:var(--gold);width:15px;height:15px}
+.lic{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--panel);border:1px solid var(--edge);border-radius:var(--r-sm);margin-bottom:6px}
+.lic .c{font-family:var(--mono);font-size:15px;letter-spacing:2px;color:var(--gold);flex:none}
+.lic .st{font-size:11px;color:var(--muted2);flex:1;text-align:left}
+.lic.used{border-color:var(--edge2)}
+.lic.dead{opacity:.5}
+.gatebox{max-width:320px;margin:0 auto}
+.subbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;margin-bottom:16px;background:var(--panel);border:1px solid var(--edge);border-inline-start:2px solid var(--ok);border-radius:var(--r-sm)}
+.subbar .sb-l{font-size:11px;letter-spacing:1.2px;color:var(--muted2)}
+.subbar .sb-d{font-family:var(--mono);font-size:14.5px;color:var(--text)}
+.subbar .sb-r{font-size:11.5px;color:var(--muted);margin-inline-start:auto}
+.subbar.warn{border-inline-start-color:var(--gold)}
+.subbar.warn .sb-r{color:var(--gold)}
+.subbar.dead{border-inline-start-color:var(--danger)}
+.subbar.dead .sb-r{color:var(--danger)}
+.coords{font-family:var(--mono);font-size:11px;color:var(--muted2);display:flex;gap:12px;flex-wrap:wrap;padding-top:4px}
+
+/* ── stage ── */
+.stagebar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;justify-content:center}
+.pageview{position:relative;box-shadow:0 20px 50px rgba(0,0,0,.55);line-height:0;border-radius:2px;overflow:hidden}
+.pageview canvas{display:block}
+#textLayer,#cTextLayer{position:absolute;inset:0;pointer-events:none}
+#boxLayer{position:absolute;inset:0}
+#boxLayer.drawing{cursor:crosshair}
+.box{position:absolute;border:1.5px dashed rgba(216,178,92,.85);background:rgba(216,178,92,.06);cursor:move;touch-action:none}
+.box[data-sel="1"]{border-style:solid;border-color:var(--azure);background:rgba(90,147,242,.1);box-shadow:0 0 0 1px rgba(90,147,242,.35)}
+.box .tag{position:absolute;top:-9px;inset-inline-start:-9px;background:var(--gold);color:#1a1408;font-family:var(--mono);font-size:10px;width:18px;height:18px;border-radius:4px;display:grid;place-items:center;font-weight:500}
+.box[data-sel="1"] .tag{background:var(--azure);color:#fff}
+.hnd{position:absolute;width:11px;height:11px;background:var(--azure);border:1.5px solid #fff;border-radius:2px;touch-action:none}
+.hnd[data-c="nw"]{top:-6px;left:-6px;cursor:nwse-resize}
+.hnd[data-c="ne"]{top:-6px;right:-6px;cursor:nesw-resize}
+.hnd[data-c="sw"]{bottom:-6px;left:-6px;cursor:nesw-resize}
+.hnd[data-c="se"]{bottom:-6px;right:-6px;cursor:nwse-resize}
+
+/* ── empty / drop ── */
+.drop{border:1.5px dashed var(--edge2);border-radius:14px;padding:52px 34px;text-align:center;max-width:460px;margin:8vh auto 0;background:var(--panel)}
+.drop.over{border-color:var(--gold);background:var(--gold-soft)}
+.drop h2{font-family:var(--display);font-size:20px;margin:0 0 8px}
+.drop p{color:var(--muted);margin:0 0 20px;font-size:13.5px}
+
+/* ── stamp (signature) ── */
+.stamp{position:relative;background:var(--panel);border:2px dashed var(--gold-dim);border-radius:12px;padding:18px 20px;transform:rotate(-1.2deg);margin:4px 0 14px}
+.stamp::before{content:"صالح للإرسال";position:absolute;top:-10px;inset-inline-start:16px;background:var(--ink);color:var(--gold);font-size:10.5px;letter-spacing:2px;padding:0 8px}
+.stamp .code{font-family:var(--mono);font-size:26px;letter-spacing:4px;color:var(--gold);text-align:center;font-weight:500}
+.stamp .meta{font-family:var(--mono);font-size:11px;color:var(--muted2);text-align:center;margin-top:6px}
+.stamp.slim{padding:10px 14px;transform:rotate(-.7deg);margin-top:12px}
+.stamp.slim::before{content:"رمز احتياطي"}
+.stamp.slim .code{font-size:17px;letter-spacing:3px}
+@keyframes press{0%{transform:rotate(-1.2deg) scale(1.5);opacity:0}60%{transform:rotate(-1.2deg) scale(.97);opacity:1}100%{transform:rotate(-1.2deg) scale(1)}}
+.stamp.new{animation:press .32s ease-out}
+.linkbox{display:flex;gap:6px;margin-bottom:10px}
+.linkbox input{flex:1;font-family:var(--mono);font-size:11.5px;direction:ltr;text-align:left}
+
+/* ── client form ── */
+.cform{display:flex;flex-direction:column;gap:14px}
+.recbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--edge)}
+.reclbl{font-size:11px;letter-spacing:1.4px;color:var(--muted2);text-transform:uppercase}
+.recchips{display:flex;gap:5px;flex-wrap:wrap;flex:1}
+.chip{min-width:30px;height:28px;padding:0 9px;border-radius:7px;border:1px solid var(--edge);background:var(--panel);color:var(--muted);font-family:var(--mono);font-size:12px;cursor:pointer}
+.chip[aria-current="true"]{border-color:var(--gold);background:var(--gold-soft);color:var(--gold)}
+.cfield label{display:flex;align-items:center;gap:7px;font-size:13px;margin-bottom:6px}
+.cfield .no{font-family:var(--mono);font-size:10.5px;color:var(--gold);border:1px solid var(--gold-dim);border-radius:4px;min-width:20px;height:18px;display:grid;place-items:center}
+.req{color:var(--danger)}
+.hint{font-size:11.5px;color:var(--muted2);margin-top:4px}
+.sticky-cta{position:sticky;bottom:0;background:linear-gradient(transparent,var(--ink) 22%);padding:18px 0 4px;margin-top:6px}
+.sticky-cta .btn{width:100%;justify-content:center;padding:11px}
+.btn.off{opacity:.45;pointer-events:none}
+
+/* ── misc ── */
+.note{font-size:12px;color:var(--muted);background:var(--panel);border:1px solid var(--edge);border-inline-start:2px solid var(--gold-dim);border-radius:var(--r-sm);padding:10px 12px;line-height:1.7}
+.empty{color:var(--muted2);font-size:13px;text-align:center;padding:28px 10px;line-height:1.8}
+.toast{position:fixed;bottom:22px;inset-inline-start:50%;transform:translateX(50%);background:var(--panel2);border:1px solid var(--edge2);border-radius:var(--r);padding:11px 18px;z-index:99;box-shadow:0 10px 30px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .2s,bottom .2s}
+.toast.on{opacity:1;bottom:32px}
+.toast.err{border-color:var(--danger)}
+.hidden{display:none!important}
+.modal{position:fixed;inset:0;background:rgba(6,10,16,.74);display:grid;place-items:center;z-index:80;padding:18px}
+.sheet{background:var(--panel);border:1px solid var(--edge2);border-radius:14px;padding:22px;max-width:460px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.6);max-height:88vh;overflow:auto}
+.sheet h3{font-family:var(--display);font-size:18px;margin:0 0 4px}
+.sheet .sub{color:var(--muted);font-size:12.5px;margin:0 0 16px}
+.divider{display:flex;align-items:center;gap:10px;color:var(--muted2);font-size:11.5px;margin:18px 0 12px}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--edge)}
+.env{font-family:var(--mono);font-size:11px;color:var(--muted2);margin-top:16px;text-align:center}
+.zoomlbl{font-family:var(--mono);font-size:12px;color:var(--muted)}
+input[type=color].in{padding:3px;height:36px;cursor:pointer}
+input[type=file]{display:none}
+@media (max-width:1050px){
+  main,main.client{grid-template-columns:1fr;max-height:none}
+  .col{max-height:none}
+  .col.stage{order:-1}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="brand"><span class="seal">د</span> دفترة <small>كتابة نصوص على ملفات PDF</small></div>
+  <div class="spacer"></div>
+  <div class="switch" id="modeSwitch">
+    <button id="mAdmin" aria-selected="true">لوحة التحكم</button>
+    <button id="mClient" aria-selected="false">صفحة العميل</button>
+  </div>
+</header>
+
+<!-- ══════════ ADMIN ══════════ -->
+<main id="adminView">
+  <section class="col">
+    <div class="pane-title">الحقول</div>
+    <div class="pane">
+      <div class="row" style="margin-bottom:6px">
+        <button class="btn sm" id="addField">＋ حقل نص</button>
+        <button class="btn sm" id="addImage">＋ حقل صورة</button>
+      </div>
+      <div class="row" style="margin-bottom:12px">
+        <button class="btn sm" id="drawField" style="width:100%;justify-content:center">رسم الإطار بالسحب</button>
+      </div>
+      <div class="flist" id="fieldList"></div>
+      <p class="empty hidden" id="fieldsEmpty">لا توجد حقول بعد.<br>أضف حقلاً ثم اسحبه إلى مكانه على الصفحة.</p>
+
+      <div class="pane-title" style="padding-inline:0">تسليم القالب</div>
+      <div class="field">
+        <label class="lbl" for="tplName">اسم القالب</label>
+        <input class="in" id="tplName" placeholder="مثال: نموذج تعميم">
+      </div>
+      <button class="btn primary" id="makeLink" style="width:100%;justify-content:center">إنشاء رابط العميل</button>
+      <p class="hint">صفحة يفتحها العميل مباشرة، بدون لوحة تحكم.</p>
+      <div class="pane-title" style="padding-inline:0">أكواد التفعيل</div>
+      <label class="chk"><input type="checkbox" id="lockTpl" checked> يطلب رمز تفعيل من العميل</label>
+      <div class="row" style="margin:8px 0">
+        <div><label class="lbl" for="licCount">العدد</label><input class="in" type="number" id="licCount" min="1" max="2000" value="1"></div>
+        <div><label class="lbl" for="licDays">الصلاحية (يوم)</label><input class="in" type="number" id="licDays" min="1" max="3650" value="365"></div>
+      </div>
+      <div class="field"><label class="lbl" for="licLen">طول الرمز</label>
+        <select class="in" id="licLen"><option value="4" selected>٤ أرقام</option><option value="6">٦ أرقام</option><option value="8">٨ أرقام</option></select></div>
+      <button class="btn primary" id="genLic" style="width:100%;justify-content:center">توليد أكواد</button>
+      <div class="row" style="margin-top:8px">
+        <button class="btn sm" id="refreshLic">تحديث الحالة</button>
+        <button class="btn sm" id="copyLics">نسخ الكل</button>
+      </div>
+      <p class="hint">«تحديث الحالة» يقرأ أي أكواد فعّلها العملاء ومتى تنتهي صلاحيتها.</p>
+      <div id="licList" style="margin-top:12px"></div>
+
+      <div class="pane-title" style="padding-inline:0">سيرفر الأكواد</div>
+      <div class="field">
+        <label class="lbl" for="srvUrl">رابط السيرفر</label>
+        <input class="in" id="srvUrl" placeholder="https://xxx.workers.dev" style="direction:ltr;text-align:left;font-family:var(--mono);font-size:11.5px">
+      </div>
+      <div class="field">
+        <label class="lbl" for="srvKey">مفتاح الإدارة</label>
+        <input class="in" id="srvKey" type="password" placeholder="ADMIN_KEY" style="direction:ltr;text-align:left">
+      </div>
+      <button class="btn sm" id="srvSave" style="width:100%;justify-content:center">حفظ وفحص الاتصال</button>
+      <p class="hint" id="srvState">اتركه فارغاً للعمل بدون سيرفر.</p>
+
+      <div class="pane-title" style="padding-inline:0">حماية لوحة التحكم</div>
+      <div class="field">
+        <label class="lbl" for="setPass">رمز الدخول للوحة</label>
+        <input class="in" id="setPass" type="text" placeholder="رمز جديد">
+      </div>
+      <button class="btn sm" id="savePass" style="width:100%;justify-content:center">حفظ رمز اللوحة</button>
+      <p class="hint" id="passState">يُطلب عند فتح لوحة التحكم فقط. لا يؤثر على رابط العميل.</p>
+
+      <div class="pane-title" style="padding-inline:0">نسخة احتياطية</div>
+      <button class="btn sm" id="saveJson" style="width:100%;justify-content:center;margin-top:10px">حفظ القالب كملف</button>
+      <button class="btn ghost sm" id="copyTpl" style="width:100%;justify-content:center;margin-top:4px">أو انسخ محتوى القالب</button>
+      <p class="hint">نسخة احتياطية يفتحها العميل يدوياً من صفحته.</p>
+    </div>
+  </section>
+
+  <section class="col stage">
+    <div class="stagebar" id="adminBar">
+      <button class="btn sm" id="openPdf">تغيير الملف</button>
+      <button class="btn sm" id="prevPg">◀</button>
+      <span class="zoomlbl" id="pgLabel">— / —</span>
+      <button class="btn sm" id="nextPg">▶</button>
+      <button class="btn sm" id="zoomOut">−</button>
+      <span class="zoomlbl" id="zoomLabel">100%</span>
+      <button class="btn sm" id="zoomIn">+</button>
+    </div>
+    <div class="pageview" id="pageView">
+      <canvas id="pdfCanvas"></canvas>
+      <canvas id="textLayer"></canvas>
+      <div id="boxLayer"></div>
+    </div>
+    <div class="drop" id="dropZone">
+      <h2>ارفع ملف PDF للبدء</h2>
+      <p>حدّد أماكن النصوص وأحجام الخط، ثم أنشئ رابطاً يعبّئ منه العميل.</p>
+      <button class="btn primary" id="pickPdf">اختيار ملف PDF</button>
+      <p class="hint" style="margin-top:14px">أو اسحب الملف وأفلته هنا</p>
+    </div>
+  </section>
+
+  <section class="col">
+    <div class="pane-title">خصائص الحقل</div>
+    <div class="pane" id="inspector">
+      <p class="empty">اختر حقلاً لتعديل نصه وخطه وموضعه.</p>
+    </div>
+  </section>
+</main>
+
+<!-- ══════════ CLIENT ══════════ -->
+<main id="clientView" class="client hidden">
+  <section class="col">
+    <div class="pane-title" id="clientTitle">تعبئة النموذج</div>
+    <div class="pane">
+      <div id="codeEntry">
+        <p class="note" style="margin-bottom:14px">أدخل رمز القالب الذي وصلك، أو افتح ملف القالب المحفوظ.</p>
+        <div class="field">
+          <label class="lbl" for="codeIn">رمز القالب</label>
+          <input class="in" id="codeIn" placeholder="مثال: K7M2QX" style="font-family:var(--mono);letter-spacing:3px;text-transform:uppercase">
+        </div>
+        <button class="btn primary" id="loadCode" style="width:100%;justify-content:center">فتح القالب</button>
+        <button class="btn sm" id="openJson" style="width:100%;justify-content:center;margin-top:10px">فتح ملف قالب</button>
+        <button class="btn ghost sm" id="pasteToggle" style="width:100%;justify-content:center;margin-top:4px">أو الصق محتوى القالب</button>
+        <div id="pasteBox" class="hidden" style="margin-top:8px">
+          <textarea class="in" id="pasteArea" placeholder="الصق المحتوى هنا" style="min-height:80px;font-family:var(--mono);font-size:11px;direction:ltr;text-align:left"></textarea>
+          <button class="btn sm" id="pasteLoad" style="width:100%;justify-content:center;margin-top:8px">فتح القالب</button>
+        </div>
+      </div>
+      <div id="gate" class="hidden gatebox">
+        <p class="note" style="margin-bottom:14px">هذا النموذج يتطلب رمز تفعيل. أدخل الرمز الذي وصلك.</p>
+        <div class="field"><label class="lbl" for="gateCode">رمز التفعيل</label>
+          <input class="in" id="gateCode" inputmode="numeric" maxlength="6" placeholder="0000"
+                 style="font-family:var(--mono);letter-spacing:8px;text-align:center;font-size:22px"></div>
+        <button class="btn primary" id="gateGo" style="width:100%;justify-content:center">دخول</button>
+        <p class="hint" id="gateMsg" style="text-align:center"></p>
+      </div>
+      <div id="clientForm" class="hidden">
+        <div class="subbar hidden" id="subBar">
+          <span class="sb-l">صلاحية الاشتراك حتى</span>
+          <span class="sb-d" id="subDate">—</span>
+          <span class="sb-r" id="subLeft"></span>
+        </div>
+        <p class="note hidden" id="previewNote" style="margin-bottom:14px">معاينة مباشرة لما يشوفه العميل. عدّل الحقول من لوحة التحكم.</p>
+        <div class="cform" id="cformFields"></div>
+        <p class="note hidden" id="envWarn" style="margin-top:16px">هذه الصفحة تعمل داخل إطار مدمج، والمتصفح يمنع التنزيل منه. افتحها في نافذة متصفح مستقلة ليعمل الزر.</p>
+        <div class="sticky-cta">
+          <a class="btn primary" id="exportBtn" download>تحميل ملف PDF</a>
+          <p class="hint hidden" id="dlNote" style="text-align:center;margin-top:8px">لم يبدأ التحميل؟ <a id="dlAlt" target="_blank" rel="noopener" style="color:var(--gold)">افتحه في نافذة</a> · <a id="dlImgs" style="color:var(--gold);cursor:pointer">احفظه كصور</a></p>
+          <div id="imgOut" class="hidden" style="margin-top:12px"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="col stage">
+    <div class="stagebar hidden" id="clientBar">
+      <button class="btn sm" id="cPrev">◀</button>
+      <span class="zoomlbl" id="cPgLabel">— / —</span>
+      <button class="btn sm" id="cNext">▶</button>
+    </div>
+    <div class="pageview hidden" id="cPageView">
+      <canvas id="cPdfCanvas"></canvas>
+      <canvas id="cTextLayer"></canvas>
+    </div>
+    <p class="empty" id="cEmpty" style="margin-top:12vh">المعاينة تظهر هنا بعد فتح القالب.</p>
+  </section>
+</main>
+</div>
+
+<input type="file" id="filePdf" accept="application/pdf">
+<input type="file" id="fileJson" accept="application/json,.json">
+<div class="modal hidden" id="adminLock">
+  <div class="sheet" style="max-width:340px;text-align:center">
+    <h3>لوحة التحكم</h3>
+    <p class="sub">هذه اللوحة محمية برمز. أدخله للمتابعة.</p>
+    <input class="in" id="adminPassIn" type="password" placeholder="رمز اللوحة" style="text-align:center;letter-spacing:3px">
+    <button class="btn primary" id="adminGo" style="width:100%;justify-content:center;margin-top:10px">دخول</button>
+    <p class="hint" id="adminMsg"></p>
+  </div>
+</div>
+<div class="modal hidden" id="linkModal">
+  <div class="sheet">
+    <h3>رابط العميل</h3>
+    <p class="sub">صفحة يكتب فيها العميل نصوصه ويحمّل الملف. لا لوحة تحكم فيها.</p>
+    <div class="field">
+      <label class="lbl" for="modalBase">عنوان هذه الأداة</label>
+      <input class="in" id="modalBase" placeholder="https://…" style="direction:ltr;text-align:left;font-family:var(--mono);font-size:11.5px">
+      <p class="hint">افتح الأداة في تبويب مستقل، وانسخ العنوان من شريط المتصفح والصقه هنا. يُحفظ ولا تحتاج تكرره.</p>
+    </div>
+    <label class="lbl" for="shareLink">انسخ هذا الرابط وأرسله للعميل</label>
+    <div class="linkbox"><input class="in" id="shareLink" readonly placeholder="يظهر بمجرد لصق العنوان أعلاه"><button class="btn sm" id="copyLink">نسخ</button></div>
+    <p class="hint" id="shareHint"></p>
+
+    <div id="openWrap" class="hidden" style="margin-top:16px">
+      <label class="lbl" for="openLink">رابط مفتوح — بدون رمز</label>
+      <div class="linkbox"><input class="in" id="openLink" readonly><button class="btn sm" id="copyOpen">نسخ</button></div>
+      <p class="hint">لاستخدامك الشخصي، أو أرسله للعميل إذا تعطّل رمزه. ثابت لا يتغيّر.</p>
+    </div>
+
+    <div class="divider">أو صفحة مستقلة لا تعتمد على هذه الأداة</div>
+    <div class="row">
+      <a class="btn" id="dlPage" download style="justify-content:center">صفحة العميل</a>
+      <a class="btn" id="dlPageOpen" download style="justify-content:center">نسخة مفتوحة</a>
+    </div>
+    <p class="hint">ارفع الملف على أي استضافة (Netlify Drop أو GitHub Pages) ليصير له رابط دائم.</p>
+    <div class="stamp slim"><div class="code" id="shareCode">——</div><div class="meta" id="shareMeta"></div></div>
+    <p class="env" id="envNote"></p>
+    <button class="btn" id="closeModal" style="width:100%;justify-content:center;margin-top:16px">إغلاق</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════ setup ═══════════════ */
+// Snapshot taken before any DOM mutation — used to spin off a client-only page.
+const PRISTINE_HTML = "<!doctype html>\n" + document.documentElement.outerHTML;
+pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+const { PDFDocument, degrees } = PDFLib;
+const $ = id => document.getElementById(id);
+
+const FONTS = [
+  { v:'"Cairo", Tahoma, sans-serif',        n:"Cairo" },
+  { v:'"Tajawal", Tahoma, sans-serif',      n:"Tajawal" },
+  { v:'"Almarai", Tahoma, sans-serif',      n:"Almarai" },
+  { v:'"Reem Kufi", Tahoma, sans-serif',    n:"Reem Kufi" },
+  { v:'"Amiri", "Times New Roman", serif',  n:"Amiri" },
+  { v:'Tahoma, sans-serif',                 n:"Tahoma" },
+  { v:'Arial, Helvetica, sans-serif',       n:"Arial" },
+  { v:'"Times New Roman", serif',           n:"Times New Roman" }
+];
+
+// Downloads are blocked outright inside an embedded frame — worth saying so.
+const EMBEDDED = (()=>{ try{ return window.self !== window.top; }catch(e){ return true; } })();
+
+const S = {
+  mode:"admin", pdfB64:null, doc:null, page:1, pages:0,
+  fields:[], sel:null, zoom:1, fitScale:1, drawMode:false,
+  records:[{}], rec:0, licenses:[], openCode:null, passHash:"", tpl:null, linked:false, cDoc:null, cPdfB64:null, cFields:[], cPages:0, cPage:1
+};
+
+/* ═══════════════ helpers ═══════════════ */
+const uid = () => "f" + Math.random().toString(36).slice(2,8);
+const genCode = () => { const A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s=""; for(let i=0;i<6;i++) s+=A[Math.floor(Math.random()*A.length)]; return s; };
+const isRTL = t => /[\u0600-\u06FF\u0750-\u077F]/.test(t||"");
+const clamp = (v,a,b) => Math.min(b, Math.max(a,v));
+
+function toast(msg, err){
+  const t=$("toast"); t.textContent=msg; t.className="toast on"+(err?" err":"");
+  clearTimeout(t._t); t._t=setTimeout(()=>t.className="toast",2800);
+}
+let lastUrl=null, pageUrl=null, openPageUrl=null;
+function downloadBlob(blob, filename, reuseUrl){
+  const url = reuseUrl || URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.rel = "noopener"; a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{ a.remove(); if(!reuseUrl) URL.revokeObjectURL(url); }, 5000);
+}
+function bytesToB64(bytes){
+  let s="", CH=0x8000;
+  for(let i=0;i<bytes.length;i+=CH) s+=String.fromCharCode.apply(null, bytes.subarray(i,i+CH));
+  return btoa(s);
+}
+function b64ToBytes(b64){
+  const bin=atob(b64), out=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i);
+  return out;
+}
+async function preloadFonts(){
+  try{
+    await document.fonts.ready;
+    await Promise.all(FONTS.flatMap(f => ["400","700"].map(w =>
+      document.fonts.load(`${w} 32px ${f.v.split(",")[0]}`).catch(()=>{})
+    )));
+  }catch(e){}
+}
+
+/* ═══════════════ pdf loading ═══════════════ */
+async function loadPdf(bytes){
+  S.pdfB64 = bytesToB64(bytes);
+  await openDoc();
+}
+async function makeDoc(b64){
+  return await pdfjsLib.getDocument({ data: b64ToBytes(b64) }).promise;
+}
+async function openDoc(){
+  S.doc = await makeDoc(S.pdfB64);
+  S.pages = S.doc.numPages;
+}
+function pageBox(vp){ return { w: vp.width, h: vp.height }; }
+
+/* ═══════════════ text drawing (shared by preview + export) ═══════════════ */
+function wrapLines(ctx, text, maxW){
+  const out=[];
+  for(const para of String(text).split("\n")){
+    const words = para.split(/\s+/).filter(Boolean);
+    if(!words.length){ out.push(""); continue; }
+    let line = words[0];
+    for(let i=1;i<words.length;i++){
+      const test = line+" "+words[i];
+      if(ctx.measureText(test).width <= maxW) line = test;
+      else { out.push(line); line = words[i]; }
+    }
+    out.push(line);
+  }
+  return out;
+}
+const imgCache = new Map();
+function loadImg(src){
+  if(imgCache.has(src)) return Promise.resolve(imgCache.get(src));
+  return new Promise((res,rej)=>{
+    const im = new Image();
+    im.onload = ()=>{ imgCache.set(src, im); res(im); };
+    im.onerror = rej;
+    im.src = src;
+  });
+}
+async function fileToDataUrl(file, max=1500){
+  const raw = await new Promise((res,rej)=>{
+    const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file);
+  });
+  const img = await loadImg(raw);
+  if(Math.max(img.width, img.height) <= max) return raw;
+  const k = max / Math.max(img.width, img.height);
+  const cv = document.createElement("canvas");
+  cv.width = Math.round(img.width*k); cv.height = Math.round(img.height*k);
+  const ctx = cv.getContext("2d");
+  const png = /png/i.test(file.type);
+  if(!png){ ctx.fillStyle="#fff"; ctx.fillRect(0,0,cv.width,cv.height); }
+  ctx.drawImage(img, 0, 0, cv.width, cv.height);
+  return png ? cv.toDataURL("image/png") : cv.toDataURL("image/jpeg", 0.9);
+}
+function drawImageInBox(ctx, f, img, cw, ch){
+  const bx=f.x*cw, by=f.y*ch, bw=f.w*cw, bh=f.h*ch;
+  const ir = img.width/img.height, br = bw/bh;
+  const widthLimited = (f.fit==="cover") ? (ir < br) : (ir > br);
+  const dw = widthLimited ? bw : bh*ir;
+  const dh = widthLimited ? bw/ir : bh;
+  ctx.save();
+  if(f.fit==="cover"){ ctx.beginPath(); ctx.rect(bx,by,bw,bh); ctx.clip(); }
+  ctx.drawImage(img, bx+(bw-dw)/2, by+(bh-dh)/2, dw, dh);
+  ctx.restore();
+}
+function drawImageGhost(ctx, f, cw, ch, ptScale){
+  const bx=f.x*cw, by=f.y*ch, bw=f.w*cw, bh=f.h*ch;
+  ctx.save();
+  ctx.fillStyle = "rgba(90,147,242,.12)";
+  ctx.fillRect(bx, by, bw, bh);
+  ctx.fillStyle = "rgba(28,58,105,.8)";
+  ctx.font = `400 ${Math.max(9, Math.min(bh*0.18, 13*ptScale))}px "Readex Pro", Tahoma, sans-serif`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.direction = "rtl";
+  ctx.fillText(f.label || "صورة", bx+bw/2, by+bh/2);
+  ctx.restore();
+}
+// One entry point for both field kinds. `ghost` marks the editor, where an
+// empty image field still needs to show where it sits.
+function paint(ctx, f, val, cw, ch, ptScale, ghost){
+  if(f.type === "image"){
+    const img = (typeof val === "string" && val.startsWith("data:")) ? imgCache.get(val) : null;
+    if(img) drawImageInBox(ctx, f, img, cw, ch);
+    else if(ghost) drawImageGhost(ctx, f, cw, ch, ptScale);
+    return;
+  }
+  drawField(ctx, f, val, cw, ch, ptScale);
+}
+function drawField(ctx, f, text, cw, ch, ptScale){
+  text = (text==null) ? "" : String(text);
+  if(!text) return;
+  const bx=f.x*cw, by=f.y*ch, bw=f.w*cw, bh=f.h*ch;
+  const weight = f.bold ? "700" : "400";
+  ctx.save();
+  ctx.direction = isRTL(text) ? "rtl" : "ltr";
+  ctx.textBaseline = "alphabetic";
+
+  // Layout (wrapping + auto-shrink) runs in a fixed reference space, never in
+  // screen pixels — otherwise preview and export pick different font sizes.
+  const REF = 4, bwR = (bw/ptScale)*REF, bhR = (bh/ptScale)*REF;
+  let pt = f.size;
+  const setRef = v => ctx.font = `${weight} ${v*REF}px ${f.font}`;
+  setRef(pt);
+  let lines;
+  if(f.multiline){
+    lines = wrapLines(ctx, text, bwR);
+    if(f.autofit){
+      while(lines.length * pt * REF * f.lh > bhR && pt > 2){
+        pt -= .25; setRef(pt); lines = wrapLines(ctx, text, bwR);
+      }
+    }
+  } else {
+    lines = [text.replace(/\n/g," ")];
+    if(f.autofit){
+      while(ctx.measureText(lines[0]).width > bwR && pt > 2){ pt -= .25; setRef(pt); }
+    }
+  }
+
+  const size = pt * ptScale;
+  ctx.font = `${weight} ${size}px ${f.font}`;
+  const lh = size * f.lh, total = lines.length * lh;
+  let y0 = f.valign==="top" ? by : f.valign==="bottom" ? by+bh-total : by + (bh-total)/2;
+
+  let tx;
+  if(f.align==="right"){ ctx.textAlign="right"; tx = bx+bw; }
+  else if(f.align==="left"){ ctx.textAlign="left"; tx = bx; }
+  else { ctx.textAlign="center"; tx = bx+bw/2; }
+
+  ctx.fillStyle = f.color;
+  lines.forEach((ln,i)=> ctx.fillText(ln, tx, y0 + i*lh + size*0.8));
+  ctx.restore();
+}
+
+/* ═══════════════ admin: render ═══════════════ */
+let renderTask = null;
+async function renderAdmin(){
+  if(!S.doc) return;
+  const page = await S.doc.getPage(S.page);
+  const base = page.getViewport({ scale:1 });
+  const avail = Math.min($("pageView").parentElement.clientWidth - 40, 940);
+  S.fitScale = avail / base.width;
+  const scale = S.fitScale * S.zoom;
+  const vp = page.getViewport({ scale });
+
+  const cv=$("pdfCanvas"), tl=$("textLayer"), bl=$("boxLayer");
+  const W=Math.floor(vp.width), H=Math.floor(vp.height);
+  [cv,tl].forEach(c=>{ c.width=W; c.height=H; c.style.width=W+"px"; c.style.height=H+"px"; });
+  $("pageView").style.width = W+"px";
+  bl.style.width=W+"px"; bl.style.height=H+"px";
+
+  if(renderTask){ try{ renderTask.cancel(); }catch(e){} }
+  renderTask = page.render({ canvasContext: cv.getContext("2d"), viewport: vp });
+  try{ await renderTask.promise; }catch(e){ if(e && e.name==="RenderingCancelledException") return; }
+
+  drawAdminText(vp, scale);
+  buildBoxes(vp);
+  $("pgLabel").textContent = `${S.page} / ${S.pages}`;
+  $("zoomLabel").textContent = Math.round(S.zoom*100)+"%";
+}
+function drawAdminText(vp, scale){
+  const tl=$("textLayer"), ctx=tl.getContext("2d");
+  ctx.clearRect(0,0,tl.width,tl.height);
+  S.fields.filter(f=>f.page===S.page).forEach(f=>
+    paint(ctx, f, f.def || f.label, tl.width, tl.height, scale, true));
+}
+function buildBoxes(vp){
+  const bl=$("boxLayer"); bl.innerHTML="";
+  S.fields.forEach((f,i)=>{
+    if(f.page!==S.page) return;
+    const d=document.createElement("div");
+    d.className="box"; d.dataset.id=f.id;
+    if(S.sel===f.id) d.dataset.sel="1";
+    d.style.cssText = `left:${f.x*vp.width}px;top:${f.y*vp.height}px;width:${f.w*vp.width}px;height:${f.h*vp.height}px`;
+    d.innerHTML = `<span class="tag">${i+1}</span>` + (S.sel===f.id
+      ? ["nw","ne","sw","se"].map(c=>`<span class="hnd" data-c="${c}"></span>`).join("") : "");
+    bl.appendChild(d);
+  });
+}
+
+/* ═══════════════ admin: fields ═══════════════ */
+// Everything that makes a field look the way it does — travels together.
+const STYLE_KEYS = ["size","font","color","align","valign","bold","lh","multiline","autofit"];
+let styleClip = null;
+const pickStyle = f => Object.fromEntries(STYLE_KEYS.map(k => [k, f[k]]));
+
+function dupField(f){
+  const below = f.y + f.h + .012;
+  const c = { ...f, id:uid(), label:f.label+" (نسخة)",
+    y: (below + f.h <= 1) ? below : clamp(f.y - f.h - .012, 0, 1-f.h) };
+  S.fields.push(c); S.sel = c.id; refreshAdmin();
+}
+function newField(x,y,w,h,type){
+  const img = type==="image";
+  return { id:uid(), page:S.page, type: img?"image":"text",
+    label:(img?"صورة ":"حقل ")+(S.fields.length+1), hint:"", def:"",
+    x, y, w, h, size:16, font:FONTS[0].v, color:"#111111", align:"center", valign:"middle",
+    bold:false, lh:1.4, multiline:false, autofit:true, required:false, fit:"contain" };
+}
+function addField(type){
+  if(!S.doc) return toast("ارفع ملف PDF أولاً", true);
+  const f = type==="image" ? newField(.36,.32,.28,.22,"image") : newField(.25,.44,.5,.09);
+  S.fields.push(f); S.sel=f.id; refreshAdmin();
+}
+function refreshAdmin(){ renderAdmin(); buildList(); buildInspector(); }
+function buildList(){
+  const L=$("fieldList"); L.innerHTML="";
+  $("fieldsEmpty").classList.toggle("hidden", S.fields.length>0);
+  S.fields.forEach((f,i)=>{
+    const b=document.createElement("button");
+    b.className="fitem"; b.setAttribute("aria-current", S.sel===f.id);
+    b.innerHTML = `<span class="no">${i+1}</span><span class="nm">${escapeHtml(f.label)}</span>${f.type==="image"?'<span class="tt">صورة</span>':""}<span class="pg">ص${f.page}</span>`;
+    b.onclick = ()=>{ S.sel=f.id; if(S.page!==f.page){ S.page=f.page; } refreshAdmin(); };
+    L.appendChild(b);
+  });
+}
+const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function buildInspector(){
+  const box=$("inspector"), f=S.fields.find(x=>x.id===S.sel);
+  if(!f){ box.innerHTML='<p class="empty">اختر حقلاً لتعديل نصه وخطه وموضعه.</p>'; return; }
+  const img = f.type === "image";
+
+  const head = `
+  <div class="grp">
+    <div class="field"><label class="lbl">نوع الحقل</label>
+      <div class="seg" id="pType">
+        <button data-v="text" aria-pressed="${!img}">نص</button>
+        <button data-v="image" aria-pressed="${img}">صورة</button></div></div>
+    <div class="field"><label class="lbl" for="pLabel">اسم الحقل كما يراه العميل</label>
+      <input class="in" id="pLabel" value="${escapeHtml(f.label)}"></div>
+    <div class="field"><label class="lbl" for="pHint">ملاحظة توضيحية</label>
+      <input class="in" id="pHint" value="${escapeHtml(f.hint)}" placeholder="اختياري"></div>
+    ${img?"":`<div class="field"><label class="lbl" for="pDef">النص الافتراضي</label>
+      <input class="in" id="pDef" value="${escapeHtml(f.def)}" placeholder="يظهر في المعاينة ويصل للعميل مكتوباً"></div>`}
+    <label class="chk"><input type="checkbox" id="pReq" ${f.required?"checked":""}> حقل إلزامي</label>
+    ${img?"":`<label class="chk"><input type="checkbox" id="pMulti" ${f.multiline?"checked":""}> نص متعدد الأسطر</label>`}
+  </div>`;
+
+  const imgGrp = `
+  <div class="grp">
+    <div class="field"><label class="lbl">ملاءمة الصورة داخل الإطار</label>
+      <div class="seg" id="pFitMode">
+        <button data-v="contain" aria-pressed="${f.fit!=="cover"}">احتواء</button>
+        <button data-v="cover" aria-pressed="${f.fit==="cover"}">تعبئة</button></div>
+      <p class="hint">الاحتواء يُظهر الصورة كاملة داخل الإطار. التعبئة تملأ الإطار وتقص الزائد.</p></div>
+    <div class="field"><label class="lbl" for="pPage">الصفحة</label>
+      <input class="in" type="number" id="pPage" min="1" max="${S.pages}" value="${f.page}"></div>
+  </div>`;
+
+  const textGrp = `
+  <div class="grp">
+    <div class="row field">
+      <div><label class="lbl" for="pSize">حجم الخط</label><input class="in" type="number" id="pSize" min="4" max="200" step="1" value="${f.size}"></div>
+      <div><label class="lbl" for="pColor">اللون</label><input class="in" type="color" id="pColor" value="${f.color}"></div>
+    </div>
+    <div class="field"><label class="lbl" for="pFont">نوع الخط</label>
+      <select class="in" id="pFont">${FONTS.map(o=>`<option value='${o.v}' ${o.v===f.font?"selected":""}>${o.n}</option>`).join("")}</select></div>
+    <div class="field"><label class="lbl">المحاذاة الأفقية</label>
+      <div class="seg" id="pAlign">
+        <button data-v="right" aria-pressed="${f.align==="right"}">يمين</button>
+        <button data-v="center" aria-pressed="${f.align==="center"}">توسيط</button>
+        <button data-v="left" aria-pressed="${f.align==="left"}">يسار</button></div></div>
+    <div class="field"><label class="lbl">المحاذاة الرأسية</label>
+      <div class="seg" id="pValign">
+        <button data-v="top" aria-pressed="${f.valign==="top"}">أعلى</button>
+        <button data-v="middle" aria-pressed="${f.valign==="middle"}">وسط</button>
+        <button data-v="bottom" aria-pressed="${f.valign==="bottom"}">أسفل</button></div></div>
+    <div class="row field">
+      <div><label class="lbl" for="pLh">تباعد الأسطر</label><input class="in" type="number" id="pLh" min="1" max="3" step="0.05" value="${f.lh}"></div>
+      <div><label class="lbl" for="pPage">الصفحة</label><input class="in" type="number" id="pPage" min="1" max="${S.pages}" value="${f.page}"></div>
+    </div>
+    <label class="chk"><input type="checkbox" id="pBold" ${f.bold?"checked":""}> خط عريض</label>
+    <label class="chk"><input type="checkbox" id="pFit" ${f.autofit?"checked":""}> تصغير الخط تلقائياً عند الامتلاء</label>
+  </div>`;
+
+  const actions = `
+  <div class="grp">
+    <div class="row" style="margin-bottom:10px">
+      <button class="btn sm" id="pDup">تكرار الحقل</button>
+      <button class="btn sm" id="pCenterH">توسيط أفقي</button>
+    </div>
+    ${img?"":`<div class="row" style="margin-bottom:10px">
+      <button class="btn sm" id="pCopyStyle">نسخ النمط</button>
+      <button class="btn sm" id="pPasteStyle" ${styleClip?"":"disabled"}>لصق النمط</button>
+    </div>
+    <button class="btn sm" id="pApplyAll" style="width:100%;justify-content:center;margin-bottom:10px">تطبيق النمط على كل الحقول</button>`}
+    ${S.pages>1?'<button class="btn sm" id="pDupPages" style="width:100%;justify-content:center;margin-bottom:10px">تكرار في كل الصفحات</button>':""}
+    <button class="btn sm danger" id="pDel" style="width:100%;justify-content:center">حذف الحقل</button>
+    <div class="coords"><span>س ${(f.x*100).toFixed(1)}%</span><span>ص ${(f.y*100).toFixed(1)}%</span><span>عرض ${(f.w*100).toFixed(1)}%</span><span>ارتفاع ${(f.h*100).toFixed(1)}%</span></div>
+  </div>`;
+
+  box.innerHTML = head + (img ? imgGrp : textGrp) + actions;
+
+  const upd = (k,v,full)=>{ f[k]=v; renderAdmin(); if(full) buildList(); };
+  const on = (id, ev, fn)=>{ const el=$(id); if(el) el[ev]=fn; };
+
+  on("pType","onclick", e=>{
+    const b=e.target.closest("button"); if(!b) return;
+    f.type = b.dataset.v;
+    if(f.type==="image" && !f.fit) f.fit="contain";
+    refreshAdmin();
+  });
+  on("pLabel","oninput", e => upd("label", e.target.value, true));
+  on("pHint","oninput",  e => f.hint = e.target.value);
+  on("pDef","oninput",   e => upd("def", e.target.value));
+  on("pReq","onchange",  e => f.required = e.target.checked);
+  on("pMulti","onchange",e => upd("multiline", e.target.checked));
+  on("pSize","oninput",  e => upd("size", +e.target.value||1));
+  on("pColor","oninput", e => upd("color", e.target.value));
+  on("pFont","onchange", e => upd("font", e.target.value));
+  on("pLh","oninput",    e => upd("lh", +e.target.value||1.4));
+  on("pBold","onchange", e => upd("bold", e.target.checked));
+  on("pFit","onchange",  e => upd("autofit", e.target.checked));
+  on("pPage","onchange", e => { f.page = clamp(+e.target.value||1,1,S.pages); S.page=f.page; refreshAdmin(); });
+  on("pAlign","onclick", e => { const b=e.target.closest("button"); if(!b) return; f.align=b.dataset.v; buildInspector(); renderAdmin(); });
+  on("pValign","onclick",e => { const b=e.target.closest("button"); if(!b) return; f.valign=b.dataset.v; buildInspector(); renderAdmin(); });
+  on("pFitMode","onclick",e => { const b=e.target.closest("button"); if(!b) return; f.fit=b.dataset.v; buildInspector(); renderAdmin(); });
+
+  on("pCenterH","onclick", ()=>{ f.x = (1-f.w)/2; refreshAdmin(); });
+  on("pDup","onclick", ()=> dupField(f));
+  on("pCopyStyle","onclick", ()=>{ styleClip = pickStyle(f); buildInspector(); toast("تم نسخ النمط"); });
+  on("pPasteStyle","onclick", ()=>{ if(!styleClip) return; Object.assign(f, styleClip); refreshAdmin(); toast("طُبّق النمط على الحقل"); });
+  on("pApplyAll","onclick", ()=>{
+    const st = styleClip || pickStyle(f);
+    const n = S.fields.filter(x => x.type!=="image").length;
+    S.fields.filter(x => x.type!=="image").forEach(x => Object.assign(x, st));
+    refreshAdmin(); toast(`طُبّق النمط على ${n} حقل`);
+  });
+  on("pDupPages","onclick", ()=>{
+    let n=0;
+    for(let pg=1; pg<=S.pages; pg++){
+      if(pg===f.page) continue;
+      S.fields.push({ ...f, id:uid(), page:pg });
+      n++;
+    }
+    refreshAdmin(); toast(`أُضيف الحقل في ${n} صفحة`);
+  });
+  on("pDel","onclick", ()=>{ S.fields = S.fields.filter(x=>x.id!==f.id); S.sel=null; refreshAdmin(); });
+}
+
+/* ═══════════════ admin: drag / resize / draw ═══════════════ */
+(function(){
+  const bl=$("boxLayer");
+  let drag=null;
+  bl.addEventListener("pointerdown", e=>{
+    const rect = bl.getBoundingClientRect();
+    const hnd = e.target.closest(".hnd");
+    const box = e.target.closest(".box");
+    if(hnd && box){
+      const f = S.fields.find(x=>x.id===box.dataset.id);
+      drag = { type:"resize", c:hnd.dataset.c, f, rect, s:{...f} };
+    } else if(box){
+      const f = S.fields.find(x=>x.id===box.dataset.id);
+      S.sel = f.id; buildList(); buildInspector(); buildBoxesQuick();
+      drag = { type:"move", f, rect, ox:(e.clientX-rect.left)/rect.width - f.x, oy:(e.clientY-rect.top)/rect.height - f.y };
+    } else if(S.drawMode && S.doc){
+      const x=(e.clientX-rect.left)/rect.width, y=(e.clientY-rect.top)/rect.height;
+      const f = newField(x,y,.001,.001);
+      S.fields.push(f); S.sel=f.id; buildList();
+      drag = { type:"new", f, rect, sx:x, sy:y };
+    } else { S.sel=null; buildList(); buildInspector(); buildBoxesQuick(); return; }
+    bl.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  bl.addEventListener("pointermove", e=>{
+    if(!drag) return;
+    const R=drag.rect, px=(e.clientX-R.left)/R.width, py=(e.clientY-R.top)/R.height, f=drag.f;
+    if(drag.type==="move"){
+      f.x = clamp(px-drag.ox, -.05, 1-f.w+.05);
+      f.y = clamp(py-drag.oy, -.05, 1-f.h+.05);
+    } else if(drag.type==="new"){
+      f.x=Math.min(drag.sx,px); f.y=Math.min(drag.sy,py);
+      f.w=Math.max(.01,Math.abs(px-drag.sx)); f.h=Math.max(.01,Math.abs(py-drag.sy));
+    } else {
+      const s=drag.s, r=s.x+s.w, b=s.y+s.h;
+      if(drag.c.includes("w")){ f.x=Math.min(px,r-.01); f.w=r-f.x; } else { f.w=Math.max(.01,px-s.x); }
+      if(drag.c.includes("n")){ f.y=Math.min(py,b-.01); f.h=b-f.y; } else { f.h=Math.max(.01,py-s.y); }
+    }
+    drawAdminTextQuick(); buildBoxesQuick();
+  });
+  bl.addEventListener("pointerup", e=>{
+    if(drag){
+      if(drag.type==="new"){ if(drag.f.w<.02||drag.f.h<.02){ drag.f.w=.5; drag.f.h=.09; } setDraw(false); }
+      drag=null; buildInspector();
+    }
+  });
+  function buildBoxesQuick(){ buildBoxes({ width:$("boxLayer").clientWidth, height:$("boxLayer").clientHeight }); }
+  function drawAdminTextQuick(){
+    const tl=$("textLayer"), ctx=tl.getContext("2d");
+    ctx.clearRect(0,0,tl.width,tl.height);
+    const scale = tl.width / (tl.width / (S.fitScale*S.zoom));
+    S.fields.filter(f=>f.page===S.page).forEach(f=> paint(ctx,f,f.def||f.label,tl.width,tl.height,S.fitScale*S.zoom,true));
+  }
+})();
+function setDraw(on){ S.drawMode=on; $("boxLayer").classList.toggle("drawing",on); $("drawField").style.borderColor = on ? "var(--gold)" : ""; }
+
+document.addEventListener("keydown", e=>{
+  if(S.mode!=="admin" || !S.sel) return;
+  if(/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
+  const f=S.fields.find(x=>x.id===S.sel); if(!f) return;
+  if((e.ctrlKey||e.metaKey) && (e.key==="d"||e.key==="D")){ e.preventDefault(); dupField(f); return; }
+  const step = e.shiftKey ? .01 : .002;
+  if(e.key==="ArrowUp") f.y-=step; else if(e.key==="ArrowDown") f.y+=step;
+  else if(e.key==="ArrowRight") f.x+=step; else if(e.key==="ArrowLeft") f.x-=step;
+  else if(e.key==="Delete"||e.key==="Backspace"){ S.fields=S.fields.filter(x=>x.id!==f.id); S.sel=null; refreshAdmin(); e.preventDefault(); return; }
+  else if(e.key==="Escape"){ S.sel=null; refreshAdmin(); return; }
+  else return;
+  e.preventDefault(); refreshAdmin();
+});
+
+/* ═══════════════ admin: wiring ═══════════════ */
+$("pickPdf").onclick = $("openPdf").onclick = ()=> $("filePdf").click();
+$("filePdf").onchange = async e => {
+  const file=e.target.files[0]; if(!file) return;
+  await handlePdfFile(file); e.target.value="";
+};
+async function handlePdfFile(file){
+  try{
+    const buf = new Uint8Array(await file.arrayBuffer());
+    await loadPdf(buf);
+    S.page=1; S.sel=null;
+    $("dropZone").classList.add("hidden");
+    $("pageView").classList.remove("hidden");
+    if(!$("tplName").value) $("tplName").value = file.name.replace(/\.pdf$/i,"");
+    refreshAdmin();
+    const mb = (buf.length/1048576).toFixed(1);
+    if(buf.length > 3.2*1048576) toast(`الملف ${mb} م.ب — قد يفشل إنشاء الرابط. جرّب ملفاً أصغر.`, true);
+  }catch(err){ toast("تعذّر فتح الملف. تأكد أنه PDF سليم.", true); }
+}
+["dragover","dragleave","drop"].forEach(ev=>$("dropZone").addEventListener(ev, e=>{
+  e.preventDefault();
+  $("dropZone").classList.toggle("over", ev==="dragover");
+  if(ev==="drop" && e.dataTransfer.files[0]) handlePdfFile(e.dataTransfer.files[0]);
+}));
+$("addField").onclick = ()=> addField("text");
+$("addImage").onclick = ()=> addField("image");
+$("drawField").onclick = ()=>{ if(!S.doc) return toast("ارفع ملف PDF أولاً", true); setDraw(!S.drawMode); };
+$("prevPg").onclick = ()=>{ if(S.page>1){ S.page--; S.sel=null; refreshAdmin(); } };
+$("nextPg").onclick = ()=>{ if(S.page<S.pages){ S.page++; S.sel=null; refreshAdmin(); } };
+$("zoomIn").onclick = ()=>{ S.zoom=clamp(S.zoom+.15,.4,2.5); renderAdmin(); };
+$("zoomOut").onclick= ()=>{ S.zoom=clamp(S.zoom-.15,.4,2.5); renderAdmin(); };
+$("pageView").classList.add("hidden");
+
+/* ═══════════════ storage ═══════════════ */
+// Published on Claude, the tool gets its own shared space. Hosted anywhere else
+// there is none, so we fall back to the visitor's browser storage.
+const store = (()=>{
+  const native = !!(window.storage && window.storage.get);
+  let local = false;
+  if(!native){ try{ localStorage.setItem("__d","1"); localStorage.removeItem("__d"); local = true; }catch(e){} }
+  const k = (key, shared) => (shared ? "dft:s:" : "dft:p:") + key;
+  return {
+    ok: native || local,
+    kind: native ? "native" : local ? "local" : "none",
+    async get(key, shared){
+      if(native){ try{ return await store.get(key, shared); }catch(e){ return null; } }
+      if(local){ try{ const v = localStorage.getItem(k(key, shared)); return v===null ? null : { key, value:v }; }catch(e){ return null; } }
+      return null;
+    },
+    async set(key, value, shared){
+      if(native){ try{ return await store.set(key, value, shared); }catch(e){ return null; } }
+      if(local){ try{ localStorage.setItem(k(key, shared), value); return { key, value }; }catch(e){ return null; } }
+      return null;
+    }
+  };
+})();
+
+/* ═══════════════ license server (optional) ═══════════════ */
+// When set, the server is the single source of truth: one code per client
+// across every device, first-use dating, and codes you can revoke.
+const srv = { url:"", key:"" };
+const srvOn = () => !!srv.url;
+async function srvCall(params){
+  const u = new URL(srv.url);
+  Object.entries(params).forEach(([k,v]) => u.searchParams.set(k,v));
+  const r = await fetch(u.toString(), { method:"GET" });
+  if(!r.ok) throw new Error("HTTP "+r.status);
+  return await r.json();
+}
+$("srvSave").onclick = async ()=>{
+  srv.url = ($("srvUrl").value||"").trim().replace(/\/+$/,"");
+  srv.key = ($("srvKey").value||"").trim();
+  await store.set("srvUrl", srv.url, true);
+  await store.set("srvKey", srv.key, false);
+  if(!srv.url){ $("srvState").textContent = "يعمل بدون سيرفر."; return; }
+  $("srvState").textContent = "جارٍ الفحص…";
+  try{
+    const r = await srvCall({ a:"list", key:srv.key });
+    if(r.error) throw new Error(r.error);
+    S.licenses = (r.codes||[]).map(c => ({
+      code:c.code, days:c.days,
+      created:new Date(c.created||Date.now()).toISOString(),
+      until:new Date((c.activated||c.created||Date.now()) + (c.days||365)*86400000).toISOString(),
+      activated:c.activated ? new Date(c.activated).toISOString() : null
+    }));
+    renderLics();
+    $("srvState").textContent = `الاتصال سليم · ${S.licenses.length} رمز على السيرفر`;
+  }catch(err){ $("srvState").textContent = "تعذّر الاتصال: " + err.message; }
+};
+async function srvLoad(){
+  try{
+    const a = await store.get("srvUrl", true); if(a && a.value) srv.url = a.value;
+    const b = await store.get("srvKey", false); if(b && b.value) srv.key = b.value;
+  }catch(e){}
+  if(window.__SRV__) srv.url = window.__SRV__;
+  $("srvUrl").value = srv.url;
+  if(srv.url) $("srvState").textContent = "سيرفر مضبوط. اضغط فحص الاتصال لتحديث القائمة.";
+}
+
+/* ═══════════════ activation codes ═══════════════ */
+// Codes live in memory and travel inside the template, so generation never
+// depends on shared storage. Storage, when present, only adds first-use dating.
+const DAY = 86400000;
+const fmtDate = d => { const x=new Date(d); return `${x.getFullYear()}/${String(x.getMonth()+1).padStart(2,"0")}/${String(x.getDate()).padStart(2,"0")}`; };
+
+async function licRead(code){
+  if(!store.ok) return null;
+  try{
+    const r = await store.get("lic:"+code, true);
+    return (r && r.value) ? JSON.parse(r.value) : null;
+  }catch(e){ return null; }
+}
+async function licSave(rec){
+  if(!store.ok) return;
+  try{ await store.set("lic:"+rec.code, JSON.stringify(rec), true); }catch(e){}
+}
+let licTable = null;
+// All issued codes in a single shared key, so a link created today keeps
+// accepting codes generated tomorrow — and 10,000 codes cost one write.
+async function licTableSave(){
+  if(!store.ok) return;
+  const map = {};
+  S.licenses.forEach(l => map[l.code] = { d:l.days, u:l.until });
+  try{ await store.set("lictable", JSON.stringify(map), true); }catch(e){}
+}
+async function licTableLoad(){
+  if(licTable) return licTable;
+  licTable = {};
+  if(!store.ok) return licTable;
+  try{
+    const r = await store.get("lictable", true);
+    if(r && r.value) licTable = JSON.parse(r.value);
+  }catch(e){}
+  return licTable;
+}
+async function licPersistAll(){
+  if(!store.ok) return;
+  try{ await store.set("licidx", JSON.stringify(S.licenses), false); }catch(e){}
+}
+async function licLoad(){
+  if(!store.ok) return;
+  try{
+    const r = await store.get("licidx", false);
+    if(r && r.value) S.licenses = JSON.parse(r.value);
+  }catch(e){}
+  renderLics();
+}
+
+$("genLic").onclick = async ()=>{
+  const n = clamp(+$("licCount").value||1, 1, 2000);
+  const days = clamp(+$("licDays").value||365, 1, 3650);
+  const len = [4,6,8].includes(+$("licLen").value) ? +$("licLen").value : 4;
+  const space = Math.pow(10, len);
+  if(n > space*0.2)
+    return toast(`${n} رمز كثير على ${len} أرقام — زد طول الرمز`, true);
+
+  const btn=$("genLic"); btn.disabled=true; btn.textContent="جارٍ التوليد…";
+  if(srvOn()){
+    try{
+      const r = await srvCall({ a:"issue", key:srv.key, n, days, len });
+      if(r.error) throw new Error(r.error);
+      const made = (r.codes||[]).map(c => ({
+        code:c.code, days:c.days, created:new Date(c.created).toISOString(),
+        until:new Date(c.created + c.days*DAY).toISOString(), activated:null }));
+      S.licenses = made.concat(S.licenses);
+      renderLics();
+      toast(`تم توليد ${made.length} رمز على السيرفر`);
+    }catch(err){ toast("تعذّر التوليد على السيرفر: " + err.message, true); }
+    btn.disabled=false; btn.textContent="توليد أكواد";
+    return;
+  }
+  const taken = new Set(S.licenses.map(l => l.code));
+  const made = [], now = Date.now();
+  for(let i=0;i<n;i++){
+    let code, guard=0;
+    do{
+      code = String(Math.floor(Math.random()*space)).padStart(len,"0");
+      guard++;
+    } while(taken.has(code) && guard<500);
+    taken.add(code);
+    made.push({ code, days, created:new Date(now).toISOString(),
+                until:new Date(now + days*DAY).toISOString(), activated:null });
+  }
+  S.licenses = made.concat(S.licenses);          // new codes join the old ones
+  renderLics();
+  await licTableSave();
+  await licPersistAll();
+  btn.disabled=false; btn.textContent="توليد أكواد";
+  toast(`تم توليد ${made.length} رمز · الإجمالي ${S.licenses.length}`);
+};
+
+function renderLics(){
+  const box=$("licList");
+  if(!S.licenses.length){ box.innerHTML='<p class="hint">لا توجد أكواد بعد.</p>'; return; }
+  box.innerHTML = S.licenses.length>60
+    ? `<p class="hint">معروض ٦٠ من ${S.licenses.length} — استخدم «نسخ الكل» للبقية.</p>` : "";
+  S.licenses.slice(0,60).forEach(l=>{
+    const until = l.activated ? (+new Date(l.activated) + l.days*DAY) : +new Date(l.until);
+    const dead = Date.now() > until;
+    const st = dead ? `منتهي في ${fmtDate(until)}`
+             : l.activated ? `مفعّل · حتى ${fmtDate(until)}`
+             : `غير مستخدم · حتى ${fmtDate(until)}`;
+    const row=document.createElement("div");
+    row.className = "lic" + (dead ? " dead" : l.activated ? " used" : "");
+    row.innerHTML = `<span class="c">${l.code}</span><span class="st">${st}</span>`;
+    box.appendChild(row);
+  });
+}
+$("refreshLic").onclick = async ()=>{
+  if(srvOn()){ await $("srvSave").onclick(); return; }
+  if(store.ok){
+    for(const l of S.licenses.slice(0,60)){
+      const rec = await licRead(l.code);
+      if(rec && rec.activated) l.activated = rec.activated;
+    }
+    await licPersistAll();
+  }
+  renderLics();
+  toast("تم تحديث الحالة");
+};
+$("copyLics").onclick = async ()=>{
+  if(!S.licenses.length) return toast("لا توجد أكواد", true);
+  const txt = S.licenses.map(l => `${l.code} — حتى ${fmtDate(l.activated ? (+new Date(l.activated)+l.days*DAY) : l.until)}`).join("\n");
+  try{ await navigator.clipboard.writeText(txt); toast("تم نسخ الأكواد"); }
+  catch(e){ toast("تعذّر النسخ", true); }
+};
+
+// Validation: shared storage gives true first-use dating; without it the code
+// runs from its generation date, which is embedded in the template.
+async function checkCode(code){
+  if(srvOn()){
+    try{
+      const r = await srvCall({ a:"check", code });
+      if(r.ok) return { ok:true, until:r.until };
+      if(r.msg) return { ok:false, msg:r.msg };
+    }catch(err){ /* offline — fall through to the local checks */ }
+  }
+  let entry = (await licTableLoad())[code] || null;
+  if(!entry){
+    const hit = ((S.tpl && S.tpl.codes) || []).find(x => x.c === code);
+    if(hit) entry = { d: hit.d || 365, u: hit.u };
+  }
+  if(!entry) return { ok:false, msg:"رمز غير صحيح." };
+
+  if(store.ok){
+    const rec = await licRead(code);
+    if(!rec || !rec.activated){
+      const fresh = { code, days: entry.d || 365, activated:new Date().toISOString() };
+      await licSave(fresh);
+      return { ok:true, until: +new Date(fresh.activated) + fresh.days*DAY };
+    }
+    const until = +new Date(rec.activated) + (rec.days || entry.d || 365)*DAY;
+    return Date.now() < until ? { ok:true, until } : { ok:false, msg:"انتهت صلاحية هذا الرمز." };
+  }
+  const until = +new Date(entry.u);
+  return Date.now() < until ? { ok:true, until } : { ok:false, msg:"انتهت صلاحية هذا الرمز." };
+}
+function unlockClient(until){
+  $("gate").classList.add("hidden");
+  $("clientForm").classList.remove("hidden");
+  $("cPageView").classList.remove("hidden");
+  $("cEmpty").classList.add("hidden");
+  showSubBar(until);
+  renderClient(); scheduleBuild();
+}
+function showSubBar(until){
+  const bar=$("subBar");
+  if(!until){ bar.classList.add("hidden"); return; }
+  const left = Math.ceil((until - Date.now())/DAY);
+  $("subDate").textContent = fmtDate(until);
+  $("subLeft").textContent = left > 0 ? `متبقٍ ${left} يوم` : "انتهى الاشتراك";
+  bar.classList.remove("hidden","warn","dead");
+  if(left <= 0) bar.classList.add("dead");
+  else if(left <= 30) bar.classList.add("warn");
+}
+$("gateGo").onclick = async ()=>{
+  const code = ($("gateCode").value||"").trim();
+  if(!code) return;
+  $("gateGo").disabled = true; $("gateMsg").textContent = "جارٍ التحقق…";
+  const r = await checkCode(code);
+  if(r.ok){
+    await store.set("mylic", code, false);
+    unlockClient(r.until);
+  } else { $("gateMsg").textContent = r.msg; }
+  $("gateGo").disabled = false;
+};
+$("gateCode").onkeydown = e => { if(e.key==="Enter") $("gateGo").click(); };
+
+/* ═══════════════ template payload ═══════════════ */
+function buildTemplate(code){
+  const lock = $("lockTpl").checked;
+  return { v:1, code, name:$("tplName").value.trim() || "قالب بدون اسم",
+    created:new Date().toISOString(), pages:S.pages, fields:S.fields, pdf:S.pdfB64,
+    lock, codes: [] };
+}
+// A downloaded page is offline, so it must carry the codes with it.
+const liveCodes = () => S.licenses
+  .filter(l => Date.now() < +new Date(l.until))
+  .map(l => ({ c:l.code, u:l.until, d:l.days }));
+$("saveJson").onclick = ()=>{
+  if(!S.doc) return toast("ارفع ملف PDF أولاً", true);
+  try{
+    const t = buildTemplate(genCode());
+    const blob = new Blob([JSON.stringify(t)], { type:"application/octet-stream" });
+    downloadBlob(blob, t.name.replace(/[\\/:*?"<>|]/g,"_") + ".daftara.json");
+    toast("تم حفظ ملف القالب في التنزيلات");
+  }catch(err){ toast("تعذّر الحفظ. استخدم زر نسخ محتوى القالب.", true); }
+};
+$("copyTpl").onclick = async ()=>{
+  if(!S.doc) return toast("ارفع ملف PDF أولاً", true);
+  try{
+    await navigator.clipboard.writeText(JSON.stringify(buildTemplate(genCode())));
+    toast("تم نسخ محتوى القالب");
+  }catch(err){ toast("تعذّر النسخ في هذا المتصفح.", true); }
+};
+function makeClientHtml(tpl){
+  const data = JSON.stringify(tpl).replace(/</g, "\\u003C");
+  const boot = "<script>window.__TPL__=" + data
+    + ";window.__PASS__=" + JSON.stringify(S.passHash || "")
+    + ";window.__SRV__=" + JSON.stringify(srv.url || "") + ";<\/script>\n";
+  return PRISTINE_HTML
+    .replace(/<title>[\s\S]*?<\/title>/, "<title>" + escapeHtml(tpl.name) + "<\/title>")
+    .replace("</head>", boot + "</head>");
+}
+let curCode = null;
+function buildShareUrl(code){
+  let base = ($("modalBase").value || "").trim();
+  if(!base && /^https?:$/.test(location.protocol)) base = location.origin + location.pathname;
+  base = base.split("#")[0].trim();
+  return (base && code) ? base + "#t=" + code : "";
+}
+function refreshShareLink(){
+  const url = buildShareUrl(curCode);
+  $("shareLink").value = url;
+  $("copyLink").classList.toggle("off", !url);
+  return url;
+}
+$("modalBase").oninput = ()=>{
+  const url = refreshShareLink();
+  if(S.openCode) $("openLink").value = buildShareUrl(S.openCode);
+  if(url) $("shareHint").textContent = "الرابط جاهز. انسخه وأرسله للعميل.";
+  try{ if(store.ok) store.set("baseUrl", $("modalBase").value.trim(), false); }catch(e){}
+};
+$("makeLink").onclick = async ()=>{
+  if(!S.doc) return toast("ارفع ملف PDF أولاً", true);
+  if(!S.fields.length) return toast("أضف حقلاً واحداً على الأقل", true);
+
+  const code = genCode(), tpl = buildTemplate(code), json = JSON.stringify(tpl);
+  curCode = code;
+  const url = refreshShareLink();
+  const hasStore = store.ok;
+
+  // A stable, lock-free twin of the same template.
+  if(!S.openCode){
+    S.openCode = genCode();
+    try{ if(hasStore) await store.set("myopen", S.openCode, false); }catch(e){}
+  }
+  const tplOpen = { ...tpl, code:S.openCode, lock:false, codes:[] };
+  $("openWrap").classList.toggle("hidden", !tpl.lock);
+  $("openLink").value = tpl.lock ? buildShareUrl(S.openCode) : "";
+
+  $("shareCode").textContent = code;
+  $("shareMeta").textContent = `${S.fields.length} حقل · ${fmtDate(Date.now())}`;
+  $("envNote").textContent = "الحفظ: " + (store.kind==="native" ? "مساحة الأداة" : store.kind==="local" ? "هذا المتصفح" : "غير متاح")
+    + " · رابط الأداة: " + (url ? "معروف" : "غير معروف")
+    + " · الحجم: " + (json.length/1048576).toFixed(1) + " م.ب";
+
+  // arm the standalone page as a real download link before the modal opens
+  const safe = tpl.name.replace(/[\\/:*?"<>|]/g,"_");
+  try{
+    if(pageUrl) URL.revokeObjectURL(pageUrl);
+    pageUrl = URL.createObjectURL(new Blob([makeClientHtml(tpl.lock ? { ...tpl, codes: liveCodes() } : tpl)], { type:"application/octet-stream" }));
+    const a=$("dlPage"); a.href = pageUrl; a.download = safe + ".html"; a.classList.remove("off");
+  }catch(e){ $("dlPage").classList.add("off"); }
+  try{
+    if(openPageUrl) URL.revokeObjectURL(openPageUrl);
+    openPageUrl = URL.createObjectURL(new Blob([makeClientHtml(tplOpen)], { type:"application/octet-stream" }));
+    const a=$("dlPageOpen"); a.href = openPageUrl; a.download = safe + " — مفتوحة.html"; a.classList.remove("off");
+  }catch(e){ $("dlPageOpen").classList.add("off"); }
+
+  $("linkModal").classList.remove("hidden");
+  $("shareHint").textContent = "جارٍ حفظ القالب…";
+
+  if(!url){
+    $("shareHint").textContent = "الصق عنوان الأداة في الحقل أعلاه ليظهر الرابط.";
+  }
+  if(!hasStore){
+    $("shareHint").textContent = "حفظ الرابط غير متاح في هذه البيئة. استخدم تنزيل صفحة العميل بالأسفل، أو انشر الأداة وأعد المحاولة.";
+    return;
+  }
+  if(json.length > 4.6*1048576){
+    $("shareHint").textContent = "القالب أكبر من حد الرابط. استخدم PDF أصغر، أو نزّل صفحة العميل بالأسفل.";
+    return;
+  }
+  try{
+    if(!await store.set("tpl:"+code, json, true)) throw new Error("store");
+    if(tpl.lock) await store.set("tpl:"+S.openCode, JSON.stringify(tplOpen), true);
+    $("shareHint").textContent = url
+      ? "الرابط جاهز. يعمل ما دامت الأداة منشورة."
+      : "القالب محفوظ. الصق عنوان الأداة أعلاه ليكتمل الرابط.";
+    if(url){ $("shareLink").focus(); $("shareLink").select(); }
+  }catch(err){
+    $("shareHint").textContent = "تعذّر حفظ القالب. استخدم تنزيل صفحة العميل بالأسفل.";
+  }
+};
+$("closeModal").onclick = ()=> $("linkModal").classList.add("hidden");
+$("linkModal").onclick = e => { if(e.target===$("linkModal")) $("linkModal").classList.add("hidden"); };
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") $("linkModal").classList.add("hidden"); });
+$("copyOpen").onclick = async ()=>{
+  const v=$("openLink").value;
+  if(!v) return toast("الصق عنوان الأداة أولاً", true);
+  try{ await navigator.clipboard.writeText(v); toast("تم نسخ الرابط المفتوح"); }
+  catch(e){ $("openLink").select(); document.execCommand("copy"); toast("تم نسخ الرابط المفتوح"); }
+};
+$("copyLink").onclick = async ()=>{
+  const v=$("shareLink").value;
+  if(!v) return toast("الصق عنوان الأداة أولاً", true);
+  try{ await navigator.clipboard.writeText(v); toast("تم نسخ الرابط"); }
+  catch(e){ $("shareLink").select(); document.execCommand("copy"); toast("تم نسخ الرابط"); }
+};
+
+/* ═══════════════ client ═══════════════ */
+function setMode(m){
+  S.mode = m;
+  $("adminView").classList.toggle("hidden", m!=="admin");
+  $("clientView").classList.toggle("hidden", m!=="client");
+  $("mAdmin").setAttribute("aria-selected", m==="admin");
+  $("mClient").setAttribute("aria-selected", m==="client");
+  if(m==="admin" && S.doc) renderAdmin();
+  if(m==="client"){
+    if(!S.linked && S.doc && S.fields.length) previewAsClient();
+    else if(S.cDoc) renderClient();
+  }
+}
+$("mAdmin").onclick = ()=> setMode("admin");
+$("mClient").onclick = ()=> setMode("client");
+
+$("loadCode").onclick = async ()=>{
+  const code = $("codeIn").value.trim().toUpperCase();
+  if(!code) return toast("أدخل الرمز أولاً", true);
+  await loadByCode(code);
+};
+async function loadByCode(code){
+  if(!store.ok) return toast("فتح الرابط غير متاح هنا. اطلب ملف القالب.", true);
+  $("loadCode").disabled=true;
+  try{
+    const r = await store.get("tpl:"+code, true);
+    if(!r || !r.value) throw 0;
+    await useTemplate(JSON.parse(r.value));
+  }catch(e){ toast("لم نجد قالباً بهذا الرمز. تأكد من الرمز مع من أرسله.", true); }
+  $("loadCode").disabled=false;
+}
+$("pasteToggle").onclick = ()=> $("pasteBox").classList.toggle("hidden");
+$("pasteLoad").onclick = async ()=>{
+  try{ await useTemplate(JSON.parse($("pasteArea").value.trim())); }
+  catch(err){ toast("المحتوى الملصق غير صالح.", true); }
+};
+$("openJson").onclick = ()=> $("fileJson").click();
+$("fileJson").onchange = async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{ await useTemplate(JSON.parse(await f.text())); }
+  catch(err){ toast("ملف القالب غير صالح.", true); }
+  e.target.value="";
+};
+async function mountClient(name, fields, pdfB64, keepValues){
+  if(S.cPdfB64 !== pdfB64 || !S.cDoc){
+    S.cDoc = await makeDoc(pdfB64); S.cPdfB64 = pdfB64;
+  }
+  S.cFields = fields; S.cPages = S.cDoc.numPages;
+  S.cPage = clamp(S.cPage||1, 1, S.cPages);
+  const prev = (keepValues && S.records.length) ? S.records : [{}];
+  S.records = prev.map(r => {
+    const o = {};
+    fields.forEach(f => o[f.id] = (r[f.id] !== undefined ? r[f.id] : (f.def||"")));
+    return o;
+  });
+  S.rec = clamp(S.rec, 0, S.records.length-1);
+  await Promise.all(S.records.flatMap(r =>
+    Object.values(r).filter(v => typeof v==="string" && v.startsWith("data:"))
+      .map(v => loadImg(v).catch(()=>{}))));
+  $("codeEntry").classList.add("hidden");
+  $("clientForm").classList.remove("hidden");
+  $("clientTitle").textContent = name;
+  $("cEmpty").classList.add("hidden");
+  $("cPageView").classList.remove("hidden");
+  $("clientBar").classList.toggle("hidden", S.cPages<2);
+  $("envWarn").classList.toggle("hidden", !EMBEDDED);
+  buildClientForm(); await renderClient(); scheduleBuild();
+}
+async function useTemplate(t){
+  S.tpl = t; S.cPage = 1;
+  await mountClient(t.name, t.fields||[], t.pdf, false);
+  $("previewNote").classList.add("hidden");
+  $("subBar").classList.add("hidden");
+  if(!t.lock) return;
+
+  $("clientForm").classList.add("hidden");
+  $("cPageView").classList.add("hidden");
+  $("gate").classList.remove("hidden");
+  $("gateMsg").textContent = "";
+
+  try{                                   // a returning client skips the prompt
+    if(store.ok){
+      const saved = await store.get("mylic", false);
+      if(saved && saved.value){
+        const r = await checkCode(saved.value);
+        if(r.ok) unlockClient(r.until);
+      }
+    }
+  }catch(e){}
+}
+// Live preview of the current admin work — no saving or re-uploading needed.
+async function previewAsClient(){
+  $("gate").classList.add("hidden");
+  $("subBar").classList.add("hidden");
+  await mountClient($("tplName").value.trim() || "معاينة القالب", S.fields, S.pdfB64, true);
+  $("previewNote").classList.remove("hidden");
+}
+const vals = () => S.records[S.rec] || (S.records[S.rec] = {});
+function blankRecord(){
+  const o={}; S.cFields.forEach(f => o[f.id] = f.def||""); return o;
+}
+function refreshClient(){
+  buildClientForm(); renderClientText(); scheduleBuild();
+}
+function buildClientForm(){
+  const box=$("cformFields"); box.innerHTML="";
+  S.cFields.forEach((f,i)=>{
+    const w=document.createElement("div"); w.className="cfield";
+    const head = `<span class="no">${i+1}</span> ${escapeHtml(f.label)} ${f.required?'<span class="req">*</span>':""}`;
+    const note = f.hint ? `<p class="hint">${escapeHtml(f.hint)}</p>` : "";
+
+    if(f.type === "image"){
+      w.innerHTML = `<label>${head}</label>
+        <div class="imgrow">
+          <button class="btn sm" id="pick_${f.id}">اختيار صورة</button>
+          <button class="btn ghost sm hidden" id="clr_${f.id}">إزالة</button>
+          <img class="thumb hidden" id="th_${f.id}" alt="">
+        </div>
+        <input type="file" accept="image/*" id="c_${f.id}" style="display:none">
+        ${note}`;
+      box.appendChild(w);
+
+      const inp=$("c_"+f.id), th=$("th_"+f.id), clr=$("clr_"+f.id);
+      const show = v => {
+        if(v){ th.src=v; th.classList.remove("hidden"); clr.classList.remove("hidden"); }
+        else { th.removeAttribute("src"); th.classList.add("hidden"); clr.classList.add("hidden"); }
+      };
+      show(vals()[f.id]);
+      $("pick_"+f.id).onclick = ()=>{ if(S.cPage!==f.page){ S.cPage=f.page; renderClient(); } inp.click(); };
+      clr.onclick = ()=>{ vals()[f.id]=""; show(""); renderClientText(); scheduleBuild(); };
+      inp.onchange = async ()=>{
+        const file = inp.files[0]; inp.value="";
+        if(!file) return;
+        try{
+          const url = await fileToDataUrl(file);
+          await loadImg(url);
+          vals()[f.id] = url; show(url); renderClientText(); scheduleBuild();
+        }catch(err){ toast("تعذّر قراءة الصورة", true); }
+      };
+      return;
+    }
+
+    const tag = f.multiline ? "textarea" : "input";
+    w.innerHTML = `<label for="c_${f.id}">${head}</label>
+      <${tag} class="in" id="c_${f.id}" ${f.multiline?"rows='3'":""} placeholder="اكتب هنا"></${tag}>
+      ${note}`;
+    box.appendChild(w);
+    const el=$("c_"+f.id); el.value = vals()[f.id]||"";
+    el.oninput = ()=>{ vals()[f.id]=el.value; renderClientText(); scheduleBuild(); };
+    el.onfocus = ()=>{ if(S.cPage!==f.page){ S.cPage=f.page; renderClient(); } };
+  });
+}
+let cScale=1, cRenderTask=null;
+async function renderClient(){
+  if(!S.cDoc) return;
+  const page = await S.cDoc.getPage(S.cPage);
+  const base = page.getViewport({scale:1});
+  const avail = Math.min($("cPageView").parentElement.clientWidth - 40, 820);
+  cScale = avail / base.width;
+  const vp = page.getViewport({scale:cScale});
+  const cv=$("cPdfCanvas"), tl=$("cTextLayer");
+  const W=Math.floor(vp.width), H=Math.floor(vp.height);
+  [cv,tl].forEach(c=>{ c.width=W; c.height=H; c.style.width=W+"px"; c.style.height=H+"px"; });
+  $("cPageView").style.width = W+"px";
+  if(cRenderTask){ try{ cRenderTask.cancel(); }catch(e){} }
+  cRenderTask = page.render({ canvasContext: cv.getContext("2d"), viewport: vp });
+  try{ await cRenderTask.promise; }catch(e){ if(e && e.name==="RenderingCancelledException") return; }
+  renderClientText();
+  $("cPgLabel").textContent = `${S.cPage} / ${S.cPages}`;
+}
+function renderClientText(){
+  const tl=$("cTextLayer"), ctx=tl.getContext("2d");
+  ctx.clearRect(0,0,tl.width,tl.height);
+  S.cFields.filter(f=>f.page===S.cPage).forEach(f=>
+    paint(ctx, f, vals()[f.id], tl.width, tl.height, cScale, false));
+}
+$("cPrev").onclick = ()=>{ if(S.cPage>1){ S.cPage--; renderClient(); } };
+$("cNext").onclick = ()=>{ if(S.cPage<S.cPages){ S.cPage++; renderClient(); } };
+
+/* ═══════════════ export ═══════════════ */
+// The PDF is built in the background as the client types, so the button is a
+// plain download link by the time it is tapped — no scripted click to block.
+let buildTimer=null, buildBusy=false;
+function setBtn(state, text){
+  const a=$("exportBtn");
+  a.classList.toggle("off", state!=="ready");
+  a.textContent = text;
+  if(state!=="ready"){ a.removeAttribute("href"); }
+}
+function scheduleBuild(){
+  clearTimeout(buildTimer);
+  setBtn("wait","جارٍ التجهيز…");
+  $("dlNote").classList.add("hidden"); $("imgOut").classList.add("hidden");
+  buildTimer = setTimeout(runBuild, 600);
+}
+async function runBuild(){
+  for(let i=0;i<S.records.length;i++){
+    const gap = S.cFields.filter(f=> f.required && !String(S.records[i][f.id]||"").trim());
+    if(gap.length) return setBtn("missing", "أكمل الحقول الإلزامية");
+  }
+  if(buildBusy){ scheduleBuild(); return; }
+  buildBusy=true; setBtn("wait","جارٍ التجهيز…");
+  try{
+    const blob = await exportPdf();
+    if(lastUrl) URL.revokeObjectURL(lastUrl);
+    lastUrl = URL.createObjectURL(blob);
+    const name = (S.tpl?.name || "ملف").replace(/[\\/:*?"<>|]/g,"_") + ".pdf";
+    const a=$("exportBtn"); a.href=lastUrl; a.download=name;
+    $("dlAlt").href=lastUrl;
+    setBtn("ready", "تحميل ملف PDF");
+  }catch(err){ console.error(err); setBtn("error","تعذّر التجهيز — عدّل نصاً وأعد المحاولة"); }
+  buildBusy=false;
+}
+// Flattened page images can always be long-pressed and saved, frame or not.
+async function renderFlatPages(scale){
+  const urls=[];
+  for(const rec of S.records){
+    for(let n=1; n<=S.cPages; n++){
+      const pg = await S.cDoc.getPage(n);
+      const vp = pg.getViewport({ scale });
+      const cv = document.createElement("canvas");
+      cv.width = Math.floor(vp.width); cv.height = Math.floor(vp.height);
+      const ctx = cv.getContext("2d");
+      ctx.fillStyle = "#fff"; ctx.fillRect(0,0,cv.width,cv.height);
+      await pg.render({ canvasContext:ctx, viewport:vp }).promise;
+      S.cFields.filter(f=>f.page===n).forEach(f =>
+        paint(ctx, f, rec[f.id], cv.width, cv.height, scale, false));
+      urls.push(cv.toDataURL("image/png"));
+    }
+  }
+  return urls;
+}
+$("dlImgs").onclick = async ()=>{
+  const out=$("imgOut");
+  out.innerHTML = '<p class="hint">جارٍ تجهيز الصور…</p>';
+  out.classList.remove("hidden");
+  try{
+    const urls = await renderFlatPages(2);
+    out.innerHTML = '<p class="hint">اضغط مطولاً على الصورة ثم احفظها.</p>';
+    urls.forEach(u=>{
+      const im = new Image();
+      im.src = u;
+      im.style.cssText = "width:100%;border-radius:6px;margin-top:8px;display:block";
+      out.appendChild(im);
+    });
+  }catch(err){ console.error(err); out.innerHTML = '<p class="hint">تعذّر تجهيز الصور.</p>'; }
+};
+$("exportBtn").addEventListener("click", ()=>{
+  setTimeout(()=> $("dlNote").classList.remove("hidden"), 1500);
+});
+async function exportPdf(){
+  const SCALE = 3;                       // px per PDF point — overlay resolution
+  const src = await PDFDocument.load(b64ToBytes(S.cPdfB64), { ignoreEncryption:true });
+  const out = await PDFDocument.create();
+  const idx = src.getPageIndices();
+
+  // Overlay canvas size per page, measured once and reused for every copy.
+  const dims = [];
+  for(let n=1; n<=S.cPages; n++){
+    const vp = (await S.cDoc.getPage(n)).getViewport({ scale: SCALE });
+    dims.push({ w: Math.floor(vp.width), h: Math.floor(vp.height) });
+  }
+
+  for(const rec of S.records){
+    const copied = await out.copyPages(src, idx);
+    for(let i=0; i<copied.length; i++){
+      const page = copied[i];
+      out.addPage(page);
+
+      const list = S.cFields.filter(f => f.page===i+1 && String(rec[f.id]||"").trim());
+      if(!list.length) continue;
+
+      const cv = document.createElement("canvas");
+      cv.width = dims[i].w; cv.height = dims[i].h;
+      const ctx = cv.getContext("2d");     // transparent overlay
+      list.forEach(f => paint(ctx, f, rec[f.id], cv.width, cv.height, SCALE, false));
+      const png = await out.embedPng(cv.toDataURL("image/png"));
+
+      // pdf.js renders the crop box, which may be offset from the PDF origin.
+      let cb;
+      try{ cb = page.getCropBox(); }
+      catch(e){ const sz = page.getSize(); cb = { x:0, y:0, width:sz.width, height:sz.height }; }
+
+      const rot = ((page.getRotation().angle % 360) + 360) % 360;
+      const flip = (rot === 90 || rot === 270);
+      const Vw = flip ? cb.height : cb.width;
+      const Vh = flip ? cb.width  : cb.height;
+
+      let x = cb.x, y = cb.y;
+      if(rot===90){ x = cb.x + Vh; }
+      else if(rot===180){ x = cb.x + Vw; y = cb.y + Vh; }
+      else if(rot===270){ y = cb.y + Vw; }
+      page.drawImage(png, { x, y, width:Vw, height:Vh, rotate:degrees(rot) });
+    }
+  }
+
+  const bytes = await out.save();
+  return new Blob([bytes], { type:"application/pdf" });
+}
+
+/* ═══════════════ admin lock ═══════════════ */
+// Obfuscation, not cryptography — it stops a curious client, nothing more.
+// First-run passcode. Change it here, or set your own from the panel.
+const BOOT_PASS = "1416";
+const hashPass = str => {
+  let h = 5381;
+  for(let i=0;i<str.length;i++) h = ((h*33) ^ str.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+};
+$("savePass").onclick = async ()=>{
+  const v = ($("setPass").value||"").trim();
+  if(!v) return toast("لا يمكن ترك اللوحة بدون رمز", true);
+  S.passHash = hashPass(v);
+  await store.set("adminpass", S.passHash, true);
+  await store.set("adminok", S.passHash, false);
+  $("setPass").value = "";
+  $("passState").textContent = "اللوحة محمية برمزك. سيُطلب عند فتحها من أي جهاز.";
+  toast("تم تعيين رمز اللوحة");
+};
+$("adminGo").onclick = async ()=>{
+  const v = ($("adminPassIn").value||"").trim();
+  if(hashPass(v) === S.passHash){
+    await store.set("adminok", S.passHash, false);
+    $("adminLock").classList.add("hidden");
+  } else { $("adminMsg").textContent = "رمز غير صحيح."; }
+};
+$("adminPassIn").onkeydown = e => { if(e.key==="Enter") $("adminGo").click(); };
+
+async function guardAdmin(){
+  let ph = window.__PASS__ || null;
+  if(!ph){
+    const r = await store.get("adminpass", true);
+    if(r && r.value) ph = r.value;
+  }
+  const boot = hashPass(BOOT_PASS);
+  S.passHash = ph || boot;                     // never unlocked by default
+  $("passState").textContent = S.passHash === boot
+    ? "اللوحة تعمل بالرمز الافتراضي — غيّره قبل النشر."
+    : "اللوحة محمية برمزك.";
+  const mine = await store.get("adminok", false);
+  if(mine && mine.value === S.passHash) return;
+  $("adminLock").classList.remove("hidden");
+  $("adminPassIn").focus();
+}
+
+/* ═══════════════ init ═══════════════ */
+(async function init(){
+  await preloadFonts();
+  await srvLoad();
+  if(/^https?:$/.test(location.protocol)) $("modalBase").value = location.origin + location.pathname;
+  try{
+    if(store.ok){
+      const saved = await store.get("baseUrl", false);
+      if(saved && saved.value) $("modalBase").value = saved.value;
+    }
+  }catch(e){}
+  if(window.__TPL__){
+    S.linked = true;
+    $("modeSwitch").classList.add("hidden");
+    setMode("client");
+    try{ await useTemplate(window.__TPL__); }
+    catch(err){ toast("تعذّر فتح القالب.", true); }
+  } else {
+    const m = location.hash.match(/t=([A-Z0-9]{4,10})/i);
+    if(m){
+      S.linked = true;
+      $("modeSwitch").classList.add("hidden");
+      setMode("client");
+      $("codeIn").value = m[1].toUpperCase();
+      await loadByCode(m[1].toUpperCase());
+    }
+  }
+  if(!S.linked){
+    await guardAdmin();
+    await licLoad();
+    try{
+      if(store.ok){
+        const r = await store.get("myopen", false);
+        if(r && r.value) S.openCode = r.value;
+      }
+    }catch(e){}
+  }
+  let rt; addEventListener("resize", ()=>{ clearTimeout(rt); rt=setTimeout(()=>{
+    if(S.mode==="admin" && S.doc) renderAdmin(); else if(S.tpl) renderClient();
+  }, 180); });
+})();
+</script>
+</body>
+</html>
