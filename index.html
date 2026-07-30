@@ -267,10 +267,6 @@ input[type=file]{display:none}
       <button class="btn sm" id="savePass" style="width:100%;justify-content:center">حفظ رمز اللوحة</button>
       <p class="hint" id="passState">يُطلب عند فتح لوحة التحكم فقط. لا يؤثر على رابط العميل.</p>
 
-      <div class="pane-title" style="padding-inline:0">نسخة احتياطية</div>
-      <button class="btn sm" id="saveJson" style="width:100%;justify-content:center;margin-top:10px">حفظ القالب كملف</button>
-      <button class="btn ghost sm" id="copyTpl" style="width:100%;justify-content:center;margin-top:4px">أو انسخ محتوى القالب</button>
-      <p class="hint">نسخة احتياطية يفتحها العميل يدوياً من صفحته.</p>
     </div>
   </section>
 
@@ -396,8 +392,10 @@ input[type=file]{display:none}
     </div>
 
     <div class="divider">للاستضافة الثابتة مثل GitHub Pages</div>
-    <a class="btn" id="dlTplJson" download style="width:100%;justify-content:center">تنزيل ملف القالب</a>
-    <p class="hint">ارفعه داخل مجلد اسمه <b>t</b> بجانب ملف الأداة، ولا تغيّر اسمه. بعدها يفتح رابط العميل جاهزاً على أي جهاز.</p>
+    <p class="hint" style="margin-bottom:6px">أنشئ في GitHub ملفاً بهذا الاسم بالضبط:</p>
+    <div class="linkbox"><input class="in" id="tplPath" readonly style="font-family:var(--mono);direction:ltr;text-align:left"><button class="btn sm" id="copyTplJson">نسخ المحتوى</button></div>
+    <p class="hint">في GitHub: Add file ← Create new file ← الصق الاسم أعلاه ← الصق المحتوى ← Commit. الشرطة المائلة تنشئ المجلد تلقائياً.</p>
+    <a class="btn sm" id="dlTplJson" download style="width:100%;justify-content:center;margin-top:6px">أو نزّله كملف</a>
 
     <div class="divider">أو صفحة مستقلة لا تعتمد على هذه الأداة</div>
     <div class="row">
@@ -450,7 +448,7 @@ function toast(msg, err){
   const t=$("toast"); t.textContent=msg; t.className="toast on"+(err?" err":"");
   clearTimeout(t._t); t._t=setTimeout(()=>t.className="toast",2800);
 }
-let lastUrl=null, pageUrl=null, openPageUrl=null, tplUrl=null;
+let lastUrl=null, pageUrl=null, openPageUrl=null, tplUrl=null, lastTplJson="";
 function downloadBlob(blob, filename, reuseUrl){
   const url = reuseUrl || URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -1333,22 +1331,6 @@ function buildTemplate(code){
 const liveCodes = () => S.licenses
   .filter(l => Date.now() < +new Date(l.until))
   .map(l => ({ c:l.code, u:l.until, d:l.days }));
-$("saveJson").onclick = ()=>{
-  if(!S.doc) return toast("ارفع ملف PDF أولاً", true);
-  try{
-    const t = buildTemplate(genCode());
-    const blob = new Blob([JSON.stringify(t)], { type:"application/octet-stream" });
-    downloadBlob(blob, t.name.replace(/[\\/:*?"<>|]/g,"_") + ".daftara.json");
-    toast("تم حفظ ملف القالب في التنزيلات");
-  }catch(err){ toast("تعذّر الحفظ. استخدم زر نسخ محتوى القالب.", true); }
-};
-$("copyTpl").onclick = async ()=>{
-  if(!S.doc) return toast("ارفع ملف PDF أولاً", true);
-  try{
-    await navigator.clipboard.writeText(JSON.stringify(buildTemplate(genCode())));
-    toast("تم نسخ محتوى القالب");
-  }catch(err){ toast("تعذّر النسخ في هذا المتصفح.", true); }
-};
 function makeClientHtml(tpl){
   const data = JSON.stringify(tpl).replace(/</g, "\\u003C");
   const boot = "<script>window.__TPL__=" + data
@@ -1422,10 +1404,12 @@ $("makeLink").onclick = async ()=>{
 
   // arm the standalone page as a real download link before the modal opens
   const safe = tpl.name.replace(/[\\/:*?"<>|]/g,"_");
+  lastTplJson = json;
   try{
     if(tplUrl) URL.revokeObjectURL(tplUrl);
     tplUrl = URL.createObjectURL(new Blob([json], { type:"application/octet-stream" }));
     const a=$("dlTplJson"); a.href = tplUrl; a.download = code + ".json"; a.classList.remove("off");
+    $("tplPath").value = "t/" + code + ".json";
   }catch(e){ $("dlTplJson").classList.add("off"); }
   try{
     if(pageUrl) URL.revokeObjectURL(pageUrl);
@@ -1480,6 +1464,13 @@ $("makeLink").onclick = async ()=>{
 $("closeModal").onclick = ()=> $("linkModal").classList.add("hidden");
 $("linkModal").onclick = e => { if(e.target===$("linkModal")) $("linkModal").classList.add("hidden"); };
 document.addEventListener("keydown", e=>{ if(e.key==="Escape") $("linkModal").classList.add("hidden"); });
+$("copyTplJson").onclick = async ()=>{
+  if(!lastTplJson) return toast("أنشئ الرابط أولاً", true);
+  try{
+    await navigator.clipboard.writeText(lastTplJson);
+    toast(`تم النسخ · ${(lastTplJson.length/1024).toFixed(0)} ك.ب`);
+  }catch(e){ toast("تعذّر النسخ في هذا المتصفح.", true); }
+};
 $("copyOpen").onclick = async ()=>{
   const v=$("openLink").value;
   if(!v) return toast("الصق عنوان الأداة أولاً", true);
