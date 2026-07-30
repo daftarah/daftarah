@@ -1043,6 +1043,43 @@ async function sbGet(base, bucket, code){
     return (t && t.pdf) ? t : null;
   }catch(e){ return null; }
 }
+// Three separate probes, because "Failed to fetch" alone says nothing about
+// which of the three things is broken.
+async function sbDiagnose(){
+  const line = [];
+  const say = () => $("sbState").innerHTML = line.join("<br>");
+
+  // 1) plain GET, no custom headers, so no CORS preflight is involved
+  line.push("١ الوصول للمشروع: جارٍ…"); say();
+  try{
+    const r = await fetch(sbPublic(sb.url, sb.bucket, "__probe"), { method:"GET", cache:"no-store" });
+    line[0] = `١ الوصول للمشروع: سليم (${r.status})`;
+  }catch(err){
+    line[0] = "١ الوصول للمشروع: فشل — العنوان غير موجود، أو الصفحة تعمل داخل بيئة تمنع الاتصال الخارجي. افتحها من موقعك المنشور وجرّب.";
+    say(); return;
+  }
+  say();
+
+  // 2) authenticated upload — this one does trigger a preflight
+  line.push("٢ الرفع بالمفتاح: جارٍ…"); say();
+  try{
+    await sbPut("__probe", JSON.stringify({ pdf:"", probe:true, at:Date.now() }));
+    line[1] = "٢ الرفع بالمفتاح: سليم";
+  }catch(err){
+    line[1] = "٢ الرفع بالمفتاح: فشل — " + err.message;
+    say(); return;
+  }
+  say();
+
+  // 3) can anyone read it back without a key
+  line.push("٣ القراءة العامة: جارٍ…"); say();
+  try{
+    const r = await fetch(sbPublic(sb.url, sb.bucket, "__probe"), { cache:"no-store" });
+    line[2] = r.ok ? "٣ القراءة العامة: سليمة — كل شيء جاهز"
+                   : `٣ القراءة العامة: فشلت (${r.status}) — اجعل الحاوية Public`;
+  }catch(err){ line[2] = "٣ القراءة العامة: فشلت — " + err.message; }
+  say();
+}
 $("sbSave").onclick = async ()=>{
   sb.url = normalizeSbUrl($("sbUrl").value);
   $("sbUrl").value = sb.url;
@@ -1052,17 +1089,7 @@ $("sbSave").onclick = async ()=>{
   await store.set("sbBucket", sb.bucket, true);
   await store.set("sbKey", sb.key, false);
   if(!sbOn()){ $("sbState").textContent = "يعمل بدون تخزين قوالب."; return; }
-  if(!/supabase\.(co|in|red|net)$/i.test(new URL(sb.url).hostname)){
-    $("sbState").textContent = "تنبيه: هذا العنوان لا يشبه عنوان Supabase. الصحيح من Project Settings ← API ويكون https://xxxx.supabase.co";
-  }
-  $("sbState").textContent = "جارٍ الفحص…";
-  try{
-    await sbPut("__probe", JSON.stringify({ pdf:"", probe:true, at:Date.now() }));
-    const r = await fetch(sbPublic(sb.url, sb.bucket, "__probe"), { cache:"no-store" });
-    $("sbState").textContent = r.ok
-      ? "الاتصال سليم — الرفع والقراءة يعملان."
-      : "الرفع نجح لكن القراءة العامة فشلت — اجعل الحاوية Public.";
-  }catch(err){ $("sbState").textContent = "تعذّر الرفع: " + err.message; }
+  await sbDiagnose();
 };
 async function sbLoad(){
   try{
