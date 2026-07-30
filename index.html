@@ -123,16 +123,6 @@ textarea.in{resize:vertical;min-height:70px;line-height:1.7}
 .drop h2{font-family:var(--display);font-size:20px;margin:0 0 8px}
 .drop p{color:var(--muted);margin:0 0 20px;font-size:13.5px}
 
-/* ── stamp (signature) ── */
-.stamp{position:relative;background:var(--panel);border:2px dashed var(--gold-dim);border-radius:12px;padding:18px 20px;transform:rotate(-1.2deg);margin:4px 0 14px}
-.stamp::before{content:"صالح للإرسال";position:absolute;top:-10px;inset-inline-start:16px;background:var(--ink);color:var(--gold);font-size:10.5px;letter-spacing:2px;padding:0 8px}
-.stamp .code{font-family:var(--mono);font-size:26px;letter-spacing:4px;color:var(--gold);text-align:center;font-weight:500}
-.stamp .meta{font-family:var(--mono);font-size:11px;color:var(--muted2);text-align:center;margin-top:6px}
-.stamp.slim{padding:10px 14px;transform:rotate(-.7deg);margin-top:12px}
-.stamp.slim::before{content:"رمز احتياطي"}
-.stamp.slim .code{font-size:17px;letter-spacing:3px}
-@keyframes press{0%{transform:rotate(-1.2deg) scale(1.5);opacity:0}60%{transform:rotate(-1.2deg) scale(.97);opacity:1}100%{transform:rotate(-1.2deg) scale(1)}}
-.stamp.new{animation:press .32s ease-out}
 .linkbox{display:flex;gap:6px;margin-bottom:10px}
 .linkbox input{flex:1;font-family:var(--mono);font-size:11.5px;direction:ltr;text-align:left}
 
@@ -242,23 +232,6 @@ input[type=file]{display:none}
       <button class="btn sm" id="srvSave" style="width:100%;justify-content:center">حفظ وفحص الاتصال</button>
       <p class="hint" id="srvState">اتركه فارغاً للعمل بدون سيرفر.</p>
 
-      <div class="pane-title" style="padding-inline:0">تخزين القوالب (Supabase)</div>
-      <div class="field">
-        <label class="lbl" for="sbUrl">رابط المشروع</label>
-        <input class="in" id="sbUrl" placeholder="https://xxxx.supabase.co" title="من Project Settings ← API ← Project URL" style="direction:ltr;text-align:left;font-family:var(--mono);font-size:11.5px">
-      </div>
-      <div class="field">
-        <label class="lbl" for="sbKey">مفتاح anon</label>
-        <input class="in" id="sbKey" type="password" placeholder="eyJhbGciOi…" style="direction:ltr;text-align:left">
-      </div>
-      <div class="field">
-        <label class="lbl" for="sbBucket">اسم الحاوية</label>
-        <input class="in" id="sbBucket" value="templates" style="direction:ltr;text-align:left;font-family:var(--mono);font-size:12px">
-      </div>
-      <button class="btn sm" id="sbSave" style="width:100%;justify-content:center">حفظ وفحص الاتصال</button>
-      <p class="hint" id="sbState">اتركه فارغاً للعمل بدون تخزين قوالب.</p>
-      <p class="hint">الرابط من Project Settings ← API ← Project URL، لا رابط لوحة التحكم ولا رابط موقعك.</p>
-
       <div class="pane-title" style="padding-inline:0">حماية لوحة التحكم</div>
       <div class="field">
         <label class="lbl" for="setPass">رمز الدخول للوحة</label>
@@ -308,18 +281,12 @@ input[type=file]{display:none}
     <div class="pane">
       <p class="note hidden" id="loadNote" style="margin-bottom:14px"></p>
       <div id="codeEntry">
-        <p class="note" style="margin-bottom:14px">أدخل رمز القالب الذي وصلك، أو افتح ملف القالب المحفوظ.</p>
+        <p class="note" style="margin-bottom:14px">أدخل رمز القالب الذي وصلك.</p>
         <div class="field">
           <label class="lbl" for="codeIn">رمز القالب</label>
           <input class="in" id="codeIn" placeholder="مثال: K7M2QX" style="font-family:var(--mono);letter-spacing:3px;text-transform:uppercase">
         </div>
         <button class="btn primary" id="loadCode" style="width:100%;justify-content:center">فتح القالب</button>
-        <button class="btn sm" id="openJson" style="width:100%;justify-content:center;margin-top:10px">فتح ملف قالب</button>
-        <button class="btn ghost sm" id="pasteToggle" style="width:100%;justify-content:center;margin-top:4px">أو الصق محتوى القالب</button>
-        <div id="pasteBox" class="hidden" style="margin-top:8px">
-          <textarea class="in" id="pasteArea" placeholder="الصق المحتوى هنا" style="min-height:80px;font-family:var(--mono);font-size:11px;direction:ltr;text-align:left"></textarea>
-          <button class="btn sm" id="pasteLoad" style="width:100%;justify-content:center;margin-top:8px">فتح القالب</button>
-        </div>
       </div>
       <div id="gate" class="hidden gatebox">
         <p class="note" style="margin-bottom:14px">هذا النموذج يتطلب رمز تفعيل. أدخل الرمز الذي وصلك.</p>
@@ -362,7 +329,6 @@ input[type=file]{display:none}
 </div>
 
 <input type="file" id="filePdf" accept="application/pdf">
-<input type="file" id="fileJson" accept="application/json,.json">
 <div class="modal hidden" id="adminLock">
   <div class="sheet" style="max-width:340px;text-align:center">
     <h3>لوحة التحكم</h3>
@@ -398,12 +364,9 @@ input[type=file]{display:none}
     <a class="btn sm" id="dlTplJson" download style="width:100%;justify-content:center;margin-top:6px">أو نزّله كملف</a>
 
     <div class="divider">أو صفحة مستقلة لا تعتمد على هذه الأداة</div>
-    <div class="row">
-      <a class="btn" id="dlPage" download style="justify-content:center">صفحة العميل</a>
-      <a class="btn" id="dlPageOpen" download style="justify-content:center">نسخة مفتوحة</a>
-    </div>
+    <a class="btn" id="dlPage" download style="width:100%;justify-content:center">تنزيل صفحة العميل</a>
+
     <p class="hint">ارفع الملف على أي استضافة (Netlify Drop أو GitHub Pages) ليصير له رابط دائم.</p>
-    <div class="stamp slim"><div class="code" id="shareCode">——</div><div class="meta" id="shareMeta"></div></div>
     <p class="env" id="envNote"></p>
     <button class="btn" id="closeModal" style="width:100%;justify-content:center;margin-top:16px">إغلاق</button>
   </div>
@@ -448,7 +411,7 @@ function toast(msg, err){
   const t=$("toast"); t.textContent=msg; t.className="toast on"+(err?" err":"");
   clearTimeout(t._t); t._t=setTimeout(()=>t.className="toast",2800);
 }
-let lastUrl=null, pageUrl=null, openPageUrl=null, tplUrl=null, lastTplJson="";
+let lastUrl=null, pageUrl=null, tplUrl=null, lastTplJson="";
 function downloadBlob(blob, filename, reuseUrl){
   const url = reuseUrl || URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -1004,130 +967,6 @@ async function srvLoad(){
   if(srv.url) $("srvState").textContent = "سيرفر مضبوط. اضغط فحص الاتصال لتحديث القائمة.";
 }
 
-/* ═══════════════ template storage (Supabase) ═══════════════ */
-// Uploads use the anon key; reads need none, because the bucket is public.
-const sb = { url:"", key:"", bucket:"templates" };
-const sbOn = () => !!(sb.url && sb.key);
-const sbPublic = (base, bucket, code) => `${base}/storage/v1/object/public/${bucket}/${code}.json`;
-
-// People paste the dashboard link, the site link, or a path. Reduce whatever
-// arrives to the project's API origin.
-function normalizeSbUrl(v){
-  v = (v||"").trim();
-  if(!v) return "";
-  if(!/^https?:\/\//i.test(v)) v = "https://" + v;
-  let u;
-  try{ u = new URL(v); }catch(e){ return ""; }
-  const ref = u.pathname.match(/\/project\/([a-z0-9]{16,})/i);
-  if(/(^|\.)supabase\.(com|io)$/i.test(u.hostname) && ref) return `https://${ref[1]}.supabase.co`;
-  return u.origin;
-}
-function sbAdvice(status){
-  if(status === 405) return "هذا العنوان ليس عنوان Supabase API. خذه من Project Settings ← API ← Project URL، وشكله https://xxxx.supabase.co";
-  if(status === 404) return "اسم الحاوية غير موجود. تأكد من الاسم في Storage.";
-  if(status === 400 || status === 403) return "الرفع مرفوض. تأكد من مفتاح anon ومن وجود سياسة INSERT على الحاوية.";
-  if(status === 401) return "المفتاح غير صحيح. انسخ anon public key من Project Settings ← API.";
-  return "";
-}
-async function sbPut(code, json){
-  const target = `${sb.url}/storage/v1/object/${sb.bucket}/${code}.json`;
-  const r = await fetch(target, {
-    method:"POST",
-    headers:{ apikey:sb.key, Authorization:"Bearer "+sb.key,
-              "content-type":"application/json", "x-upsert":"true" },
-    body: json
-  });
-  if(!r.ok){
-    const tip = sbAdvice(r.status);
-    throw new Error(`HTTP ${r.status} على ${target}${tip ? " — " + tip : ""}`);
-  }
-  return true;
-}
-async function sbGet(base, bucket, code){
-  try{
-    const r = await fetch(sbPublic(base, bucket, code), { cache:"no-store" });
-    if(!r.ok) return null;
-    const t = await r.json();
-    return (t && t.pdf) ? t : null;
-  }catch(e){ return null; }
-}
-// Three separate probes, because "Failed to fetch" alone says nothing about
-// which of the three things is broken.
-async function reach(u){
-  try{ await fetch(u, { mode:"no-cors", cache:"no-store" }); return true; }
-  catch(e){ return false; }
-}
-async function sbDiagnose(){
-  const line = [];
-  const say = () => $("sbState").innerHTML = line.join("<br>");
-
-  // 1) plain GET, no custom headers, so no CORS preflight is involved
-  const probeUrl = sbPublic(sb.url, sb.bucket, "__probe");
-  line.push("١ الوصول للمشروع: جارٍ…"); say();
-  try{
-    const r = await fetch(probeUrl, { method:"GET", cache:"no-store" });
-    line[0] = `١ الوصول للمشروع: سليم (${r.status})`;
-  }catch(err){
-    // Separate "this host is wrong" from "nothing outbound works here".
-    const host = new URL(sb.url).origin;
-    const hostOk = await reach(host + "/favicon.ico");
-    const supaOk = await reach("https://supabase.com/favicon.ico");
-    let why;
-    if(!hostOk && !supaOk)
-      why = "هذه الصفحة تمنع الاتصال الخارجي. افتح الأداة من موقعك المنشور وأعد الفحص.";
-    else if(!hostOk && supaOk)
-      why = "الإنترنت يعمل لكن هذا المشروع غير موجود. تأكد من معرّف المشروع في Project Settings ← API.";
-    else
-      why = "الشبكة تحجب الطلب. جرّب شبكة أخرى أو أوقف أي حاجب إعلانات.";
-    line[0] = "١ الوصول للمشروع: فشل — " + why
-      + `<br><span style="font-family:var(--mono);font-size:10.5px;direction:ltr;display:inline-block;margin-top:4px">${probeUrl}</span>`
-      + `<br><a href="${probeUrl}" target="_blank" rel="noopener" style="color:var(--gold)">افتح هذا العنوان في تبويب للتأكد</a>`;
-    say(); return;
-  }
-  say();
-
-  // 2) authenticated upload — this one does trigger a preflight
-  line.push("٢ الرفع بالمفتاح: جارٍ…"); say();
-  try{
-    await sbPut("__probe", JSON.stringify({ pdf:"", probe:true, at:Date.now() }));
-    line[1] = "٢ الرفع بالمفتاح: سليم";
-  }catch(err){
-    line[1] = "٢ الرفع بالمفتاح: فشل — " + err.message;
-    say(); return;
-  }
-  say();
-
-  // 3) can anyone read it back without a key
-  line.push("٣ القراءة العامة: جارٍ…"); say();
-  try{
-    const r = await fetch(sbPublic(sb.url, sb.bucket, "__probe"), { cache:"no-store" });
-    line[2] = r.ok ? "٣ القراءة العامة: سليمة — كل شيء جاهز"
-                   : `٣ القراءة العامة: فشلت (${r.status}) — اجعل الحاوية Public`;
-  }catch(err){ line[2] = "٣ القراءة العامة: فشلت — " + err.message; }
-  say();
-}
-$("sbSave").onclick = async ()=>{
-  sb.url = normalizeSbUrl($("sbUrl").value);
-  $("sbUrl").value = sb.url;
-  sb.key = ($("sbKey").value||"").trim();
-  sb.bucket = (($("sbBucket").value||"").trim()) || "templates";
-  await store.set("sbUrl", sb.url, true);
-  await store.set("sbBucket", sb.bucket, true);
-  await store.set("sbKey", sb.key, false);
-  if(!sbOn()){ $("sbState").textContent = "يعمل بدون تخزين قوالب."; return; }
-  await sbDiagnose();
-};
-async function sbLoad(){
-  try{
-    const a = await store.get("sbUrl", true);    if(a && a.value) sb.url = a.value;
-    const b = await store.get("sbBucket", true); if(b && b.value) sb.bucket = b.value;
-    const c = await store.get("sbKey", false);   if(c && c.value) sb.key = c.value;
-  }catch(e){}
-  if(window.__SB__){ sb.url = window.__SB__.u || sb.url; sb.bucket = window.__SB__.g || sb.bucket; }
-  $("sbUrl").value = sb.url; $("sbBucket").value = sb.bucket;
-  if(sb.url) $("sbState").textContent = "مضبوط. اضغط فحص الاتصال للتأكد.";
-}
-
 /* ═══════════════ activation codes ═══════════════ */
 // Codes live in memory and travel inside the template, so generation never
 // depends on shared storage. Storage, when present, only adds first-use dating.
@@ -1335,8 +1174,7 @@ function makeClientHtml(tpl){
   const data = JSON.stringify(tpl).replace(/</g, "\\u003C");
   const boot = "<script>window.__TPL__=" + data
     + ";window.__PASS__=" + JSON.stringify(S.passHash || "")
-    + ";window.__SRV__=" + JSON.stringify(srv.url || "")
-    + ";window.__SB__=" + JSON.stringify({ u:sb.url||"", g:sb.bucket||"" }) + ";<\/script>\n";
+    + ";window.__SRV__=" + JSON.stringify(srv.url || "") + ";<\/script>\n";
   return PRISTINE_HTML
     .replace(/<title>[\s\S]*?<\/title>/, "<title>" + escapeHtml(tpl.name) + "<\/title>")
     .replace("</head>", boot + "</head>");
@@ -1349,7 +1187,7 @@ function buildShareUrl(code){
   if(!base || !code) return "";
   return base + "#t=" + code
     + (srv.url ? "&s=" + encodeURIComponent(srv.url) : "")
-    + (sb.url ? "&b=" + encodeURIComponent(sb.url) + "&g=" + encodeURIComponent(sb.bucket) : "");
+;
 }
 function refreshShareLink(){
   const url = buildShareUrl(curCode);
@@ -1395,11 +1233,9 @@ $("makeLink").onclick = async ()=>{
   $("openWrap").classList.toggle("hidden", !tpl.lock);
   $("openLink").value = tpl.lock ? buildShareUrl(S.openCode) : "";
 
-  $("shareCode").textContent = code;
-  $("shareMeta").textContent = `${S.fields.length} حقل · ${fmtDate(Date.now())}`;
   $("envNote").textContent = "الحفظ: " + (store.kind==="native" ? "مساحة الأداة" : store.kind==="local" ? "هذا المتصفح" : "غير متاح")
     + " · رابط الأداة: " + (url ? "معروف" : "غير معروف")
-    + " · القوالب: " + (srvOn() ? "سيرفرك" : sbOn() ? "Supabase" : "محلي")
+    + " · القوالب: " + (srvOn() ? "سيرفرك" : "الموقع")
     + " · الحجم: " + (json.length/1048576).toFixed(1) + " م.ب";
 
   // arm the standalone page as a real download link before the modal opens
@@ -1416,11 +1252,6 @@ $("makeLink").onclick = async ()=>{
     pageUrl = URL.createObjectURL(new Blob([makeClientHtml(tpl.lock ? { ...tpl, codes: liveCodes() } : tpl)], { type:"application/octet-stream" }));
     const a=$("dlPage"); a.href = pageUrl; a.download = safe + ".html"; a.classList.remove("off");
   }catch(e){ $("dlPage").classList.add("off"); }
-  try{
-    if(openPageUrl) URL.revokeObjectURL(openPageUrl);
-    openPageUrl = URL.createObjectURL(new Blob([makeClientHtml(tplOpen)], { type:"application/octet-stream" }));
-    const a=$("dlPageOpen"); a.href = openPageUrl; a.download = safe + " — مفتوحة.html"; a.classList.remove("off");
-  }catch(e){ $("dlPageOpen").classList.add("off"); }
 
   $("linkModal").classList.remove("hidden");
   $("shareHint").textContent = "جارٍ حفظ القالب…";
@@ -1443,12 +1274,7 @@ $("makeLink").onclick = async ()=>{
       $("shareHint").textContent = url
         ? "القالب مرفوع على سيرفرك. الرابط يفتح جاهزاً من أي جهاز."
         : "القالب مرفوع على سيرفرك. الصق عنوان الأداة أعلاه ليكتمل الرابط.";
-    } else if(sbOn()){
-      await sbPut(code, json);
-      if(tpl.lock) await sbPut(S.openCode, JSON.stringify(tplOpen));
-      $("shareHint").textContent = url
-        ? "القالب مرفوع على Supabase. الرابط يفتح جاهزاً من أي جهاز."
-        : "القالب مرفوع على Supabase. الصق عنوان الأداة أعلاه ليكتمل الرابط.";
+
     } else {
       if(!await store.set("tpl:"+code, json, true)) throw new Error("store");
       if(tpl.lock) await store.set("tpl:"+S.openCode, JSON.stringify(tplOpen), true);
@@ -1514,10 +1340,6 @@ async function loadByCode(code){
       const t = await srvGetTpl(code);
       if(t){ await useTemplate(t); $("loadNote").classList.add("hidden"); return true; }
     }
-    if(sb.url && sb.bucket){
-      const t = await sbGet(sb.url, sb.bucket, code);
-      if(t){ await useTemplate(t); $("loadNote").classList.add("hidden"); return true; }
-    }
     try{                                  // a file uploaded beside the tool
       const res = await fetch("t/" + code + ".json", { cache:"no-store" });
       if(res.ok){
@@ -1534,18 +1356,6 @@ async function loadByCode(code){
   }finally{ $("loadCode").disabled = false; }
   return false;
 }
-$("pasteToggle").onclick = ()=> $("pasteBox").classList.toggle("hidden");
-$("pasteLoad").onclick = async ()=>{
-  try{ await useTemplate(JSON.parse($("pasteArea").value.trim())); }
-  catch(err){ toast("المحتوى الملصق غير صالح.", true); }
-};
-$("openJson").onclick = ()=> $("fileJson").click();
-$("fileJson").onchange = async e=>{
-  const f=e.target.files[0]; if(!f) return;
-  try{ await useTemplate(JSON.parse(await f.text())); }
-  catch(err){ toast("ملف القالب غير صالح.", true); }
-  e.target.value="";
-};
 async function mountClient(name, fields, pdfB64, keepValues){
   if(S.cPdfB64 !== pdfB64 || !S.cDoc){
     S.cDoc = await makeDoc(pdfB64); S.cPdfB64 = pdfB64;
@@ -1854,7 +1664,6 @@ async function guardAdmin(){
 (async function init(){
   await preloadFonts();
   await srvLoad();
-  await sbLoad();
   if(/^https?:$/.test(location.protocol)) $("modalBase").value = location.origin + location.pathname;
   try{
     if(store.ok){
@@ -1875,10 +1684,6 @@ async function guardAdmin(){
     const m = location.hash.match(/t=([A-Z0-9]{4,10})/i);
     const sm = location.hash.match(/[#&]s=([^&]+)/);
     if(sm){ try{ srv.url = decodeURIComponent(sm[1]); }catch(e){} }
-    const bm = location.hash.match(/[#&]b=([^&]+)/);
-    const gm = location.hash.match(/[#&]g=([^&]+)/);
-    if(bm){ try{ sb.url = decodeURIComponent(bm[1]); }catch(e){} }
-    if(gm){ try{ sb.bucket = decodeURIComponent(gm[1]); }catch(e){} }
     if(m){
       S.linked = true;
       $("modeSwitch").classList.add("hidden");
