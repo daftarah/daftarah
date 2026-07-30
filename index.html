@@ -207,6 +207,11 @@ input[type=file]{display:none}
         <label class="lbl" for="tplName">اسم القالب</label>
         <input class="in" id="tplName" placeholder="مثال: نموذج تعميم">
       </div>
+      <div class="field">
+        <label class="lbl" for="pdfPath">مسار ملف PDF على الموقع</label>
+        <input class="in" id="pdfPath" placeholder="pdf/taameem.pdf" style="direction:ltr;text-align:left;font-family:var(--mono);font-size:11.5px">
+        <p class="hint" id="pdfPathState">اختياري. ارفع الـ PDF في المستودع وضع مساره هنا، فيصغر حجم القالب ويُستدعى الملف من الموقع.</p>
+      </div>
       <button class="btn primary" id="makeLink" style="width:100%;justify-content:center">إنشاء رابط العميل</button>
       <p class="hint">صفحة يفتحها العميل مباشرة، بدون لوحة تحكم.</p>
       <div class="pane-title" style="padding-inline:0">أكواد التفعيل</div>
@@ -477,6 +482,11 @@ async function preloadFonts(){
 async function loadPdf(bytes){
   S.pdfB64 = bytesToB64(bytes);
   await openDoc();
+}
+async function fetchPdfB64(url){
+  const r = await fetch(url, { cache:"no-store" });
+  if(!r.ok) throw new Error(`تعذّر جلب ${url} (${r.status})`);
+  return bytesToB64(new Uint8Array(await r.arrayBuffer()));
 }
 async function makeDoc(b64){
   return await pdfjsLib.getDocument({ data: b64ToBytes(b64) }).promise;
@@ -1045,17 +1055,35 @@ async function sbGet(base, bucket, code){
 }
 // Three separate probes, because "Failed to fetch" alone says nothing about
 // which of the three things is broken.
+async function reach(u){
+  try{ await fetch(u, { mode:"no-cors", cache:"no-store" }); return true; }
+  catch(e){ return false; }
+}
 async function sbDiagnose(){
   const line = [];
   const say = () => $("sbState").innerHTML = line.join("<br>");
 
   // 1) plain GET, no custom headers, so no CORS preflight is involved
+  const probeUrl = sbPublic(sb.url, sb.bucket, "__probe");
   line.push("١ الوصول للمشروع: جارٍ…"); say();
   try{
-    const r = await fetch(sbPublic(sb.url, sb.bucket, "__probe"), { method:"GET", cache:"no-store" });
+    const r = await fetch(probeUrl, { method:"GET", cache:"no-store" });
     line[0] = `١ الوصول للمشروع: سليم (${r.status})`;
   }catch(err){
-    line[0] = "١ الوصول للمشروع: فشل — العنوان غير موجود، أو الصفحة تعمل داخل بيئة تمنع الاتصال الخارجي. افتحها من موقعك المنشور وجرّب.";
+    // Separate "this host is wrong" from "nothing outbound works here".
+    const host = new URL(sb.url).origin;
+    const hostOk = await reach(host + "/favicon.ico");
+    const supaOk = await reach("https://supabase.com/favicon.ico");
+    let why;
+    if(!hostOk && !supaOk)
+      why = "هذه الصفحة تمنع الاتصال الخارجي. افتح الأداة من موقعك المنشور وأعد الفحص.";
+    else if(!hostOk && supaOk)
+      why = "الإنترنت يعمل لكن هذا المشروع غير موجود. تأكد من معرّف المشروع في Project Settings ← API.";
+    else
+      why = "الشبكة تحجب الطلب. جرّب شبكة أخرى أو أوقف أي حاجب إعلانات.";
+    line[0] = "١ الوصول للمشروع: فشل — " + why
+      + `<br><span style="font-family:var(--mono);font-size:10.5px;direction:ltr;display:inline-block;margin-top:4px">${probeUrl}</span>`
+      + `<br><a href="${probeUrl}" target="_blank" rel="noopener" style="color:var(--gold)">افتح هذا العنوان في تبويب للتأكد</a>`;
     say(); return;
   }
   say();
@@ -1294,8 +1322,11 @@ $("gateCode").onkeydown = e => { if(e.key==="Enter") $("gateGo").click(); };
 /* ═══════════════ template payload ═══════════════ */
 function buildTemplate(code){
   const lock = $("lockTpl").checked;
+  const path = ($("pdfPath").value||"").trim().replace(/^\/+/,"");
   return { v:1, code, name:$("tplName").value.trim() || "قالب بدون اسم",
-    created:new Date().toISOString(), pages:S.pages, fields:S.fields, pdf:S.pdfB64,
+    created:new Date().toISOString(), pages:S.pages, fields:S.fields,
+    pdf: path ? "" : S.pdfB64,          // referenced files stay out of the payload
+    pdfUrl: path || "",
     lock, codes: [] };
 }
 // A downloaded page is offline, so it must carry the codes with it.
@@ -1349,6 +1380,20 @@ $("modalBase").oninput = ()=>{
   if(S.openCode) $("openLink").value = buildShareUrl(S.openCode);
   if(url) $("shareHint").textContent = "الرابط جاهز. انسخه وأرسله للعميل.";
   try{ if(store.ok) store.set("baseUrl", $("modalBase").value.trim(), false); }catch(e){}
+};
+$("pdfPath").onchange = async ()=>{
+  const v = ($("pdfPath").value||"").trim().replace(/^\/+/,"");
+  $("pdfPath").value = v;
+  const el = $("pdfPathState");
+  if(!v){ el.textContent = "اختياري. ارفع الـ PDF في المستودع وضع مساره هنا، فيصغر حجم القالب ويُستدعى الملف من الموقع."; return; }
+  el.textContent = "جارٍ الفحص…";
+  try{
+    const r = await fetch(v, { cache:"no-store" });
+    const type = r.headers.get("content-type") || "";
+    el.textContent = !r.ok ? `لم يُعثر على الملف (${r.status}) — تأكد أنك رفعته بهذا المسار.`
+      : /pdf/i.test(type) ? "الملف موجود ✔"
+      : "المسار يعمل لكن الملف لا يبدو PDF — تأكد من الامتداد.";
+  }catch(err){ el.textContent = "تعذّر الوصول للمسار — جرّب من موقعك المنشور."; }
 };
 $("makeLink").onclick = async ()=>{
   if(!S.doc) return toast("ارفع ملف PDF أولاً", true);
@@ -1537,7 +1582,9 @@ async function mountClient(name, fields, pdfB64, keepValues){
 }
 async function useTemplate(t){
   S.tpl = t; S.cPage = 1;
-  await mountClient(t.name, t.fields||[], t.pdf, false);
+  let b64 = t.pdf;
+  if(!b64 && t.pdfUrl) b64 = await fetchPdfB64(t.pdfUrl);   // relative to this page
+  await mountClient(t.name, t.fields||[], b64, false);
   $("previewNote").classList.add("hidden");
   $("subBar").classList.add("hidden");
   if(!t.lock) return;
@@ -1829,7 +1876,10 @@ async function guardAdmin(){
     $("modeSwitch").classList.add("hidden");
     setMode("client");
     try{ await useTemplate(window.__TPL__); }
-    catch(err){ toast("تعذّر فتح القالب.", true); }
+    catch(err){
+      $("loadNote").classList.remove("hidden");
+      $("loadNote").textContent = "تعذّر فتح القالب: " + err.message;
+    }
   } else {
     const m = location.hash.match(/t=([A-Z0-9]{4,10})/i);
     const sm = location.hash.match(/[#&]s=([^&]+)/);
