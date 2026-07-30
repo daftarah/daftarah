@@ -935,7 +935,7 @@ async function srvGetTpl(code){
   const r = await fetch(u.toString());
   if(!r.ok) return null;
   const t = await r.json();
-  return (t && t.pdf) ? t : null;
+  return (t && (t.pdf || t.pdfUrl)) ? t : null;
 }
 $("srvSave").onclick = async ()=>{
   srv.url = ($("srvUrl").value||"").trim().replace(/\/+$/,"");
@@ -1344,15 +1344,20 @@ async function loadByCode(code){
       const res = await fetch("t/" + code + ".json", { cache:"no-store" });
       if(res.ok){
         const t = await res.json();
-        if(t && t.pdf){ await useTemplate(t); $("loadNote").classList.add("hidden"); return true; }
+        if(t && (t.pdf || t.pdfUrl)){ await useTemplate(t); $("loadNote").classList.add("hidden"); return true; }
       }
-    }catch(e){}
+    }catch(e){ if(e.message) throw e; }
     const r = await store.get("tpl:"+code, true);
     if(r && r.value){ await useTemplate(JSON.parse(r.value)); $("loadNote").classList.add("hidden"); return true; }
     throw new Error("not found");
   }catch(e){
     $("codeEntry").classList.remove("hidden");
-    $("loadNote").textContent = "لم نجد قالباً بهذا الرمز. تأكد من الرابط مع من أرسله.";
+    const where = new URL("t/" + code + ".json", location.href).href;
+    $("loadNote").innerHTML = (e && e.message && e.message !== "not found")
+      ? "تعذّر فتح القالب: " + e.message
+      : "لم نجد قالباً بهذا الرمز. الأداة بحثت هنا:"
+        + `<br><span style="font-family:var(--mono);font-size:10.5px;direction:ltr;display:inline-block;margin-top:4px">${where}</span>`
+        + `<br><a href="${where}" target="_blank" rel="noopener" style="color:var(--gold)">افتح هذا العنوان للتأكد من رفع الملف</a>`;
   }finally{ $("loadCode").disabled = false; }
   return false;
 }
