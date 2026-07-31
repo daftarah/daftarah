@@ -89,6 +89,11 @@ textarea.in{resize:vertical;min-height:70px;line-height:1.7}
 .lic .st{font-size:11px;color:var(--muted2);flex:1;text-align:left}
 .lic.used{border-color:var(--edge2)}
 .lic.dead{opacity:.5}
+.lib{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel);border:1px solid var(--edge);border-radius:var(--r-sm);margin-bottom:6px}
+.lib.on{border-color:var(--gold);background:var(--gold-soft)}
+.lib-main{flex:1;min-width:0}
+.lib-name{font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-meta{font-family:var(--mono);font-size:10.5px;color:var(--muted2);margin-top:2px}
 .gatebox{max-width:320px;margin:0 auto}
 .subbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;margin-bottom:16px;background:var(--panel);border:1px solid var(--edge);border-inline-start:2px solid var(--ok);border-radius:var(--r-sm)}
 .subbar .sb-l{font-size:11px;letter-spacing:1.2px;color:var(--muted2)}
@@ -202,24 +207,13 @@ input[type=file]{display:none}
         <input class="in" id="pdfPath" placeholder="pdf/taameem.pdf" style="direction:ltr;text-align:left;font-family:var(--mono);font-size:11.5px">
         <p class="hint" id="pdfPathState">اختياري. ارفع الـ PDF في المستودع وضع مساره هنا، فيصغر حجم القالب ويُستدعى الملف من الموقع.</p>
       </div>
-      <button class="btn primary" id="makeLink" style="width:100%;justify-content:center">إنشاء رابط العميل</button>
-      <p class="hint">صفحة يفتحها العميل مباشرة، بدون لوحة تحكم.</p>
-      <div class="pane-title" style="padding-inline:0">أكواد التفعيل</div>
       <label class="chk"><input type="checkbox" id="lockTpl" checked> يطلب رمز تفعيل من العميل</label>
-      <div class="row" style="margin:8px 0">
-        <div><label class="lbl" for="licCount">العدد</label><input class="in" type="number" id="licCount" min="1" max="2000" value="1"></div>
-        <div><label class="lbl" for="licDays">الصلاحية (يوم)</label><input class="in" type="number" id="licDays" min="1" max="3650" value="365"></div>
-      </div>
-      <div class="field"><label class="lbl" for="licLen">طول الرمز</label>
-        <select class="in" id="licLen"><option value="4" selected>٤ أرقام</option><option value="6">٦ أرقام</option><option value="8">٨ أرقام</option></select></div>
-      <button class="btn primary" id="genLic" style="width:100%;justify-content:center">توليد أكواد</button>
+      <button class="btn primary" id="makeLink" style="width:100%;justify-content:center;margin-top:8px">إنشاء رابط العميل</button>
+      <p class="hint" id="tplIdNote">صفحة يفتحها العميل مباشرة، بدون لوحة تحكم.</p>
       <div class="row" style="margin-top:8px">
-        <button class="btn sm" id="refreshLic">تحديث الحالة</button>
-        <button class="btn sm" id="copyLics">نسخ الكل</button>
+        <button class="btn sm" id="libBtn">قوالبي</button>
+        <button class="btn sm" id="codesBtn">إدارة الأكواد</button>
       </div>
-      <p class="hint">«تحديث الحالة» يقرأ أي أكواد فعّلها العملاء ومتى تنتهي صلاحيتها.</p>
-      <div id="licList" style="margin-top:12px"></div>
-
       <div class="pane-title" style="padding-inline:0">سيرفر الأكواد</div>
       <div class="field">
         <label class="lbl" for="srvUrl">رابط السيرفر</label>
@@ -329,6 +323,36 @@ input[type=file]{display:none}
 </div>
 
 <input type="file" id="filePdf" accept="application/pdf">
+<div class="modal hidden" id="codesModal">
+  <div class="sheet" style="max-width:520px">
+    <h3>أكواد التفعيل</h3>
+    <p class="sub" id="codesSummary">لا توجد أكواد بعد.</p>
+    <div class="row" style="margin-bottom:8px">
+      <div><label class="lbl" for="licCount">العدد</label><input class="in" type="number" id="licCount" min="1" max="2000" value="1"></div>
+      <div><label class="lbl" for="licDays">الصلاحية (يوم)</label><input class="in" type="number" id="licDays" min="1" max="3650" value="365"></div>
+      <div><label class="lbl" for="licLen">الأرقام</label>
+        <select class="in" id="licLen"><option value="4" selected>٤</option><option value="6">٦</option><option value="8">٨</option></select></div>
+    </div>
+    <button class="btn primary" id="genLic" style="width:100%;justify-content:center">توليد أكواد</button>
+    <div class="divider">القائمة</div>
+    <div class="row" style="margin-bottom:8px">
+      <input class="in" id="licSearch" placeholder="بحث عن رمز">
+      <button class="btn sm" id="refreshLic">تحديث</button>
+      <button class="btn sm" id="copyLics">نسخ الكل</button>
+    </div>
+    <div id="licList" style="max-height:320px;overflow:auto"></div>
+    <button class="btn" id="closeCodes" style="width:100%;justify-content:center;margin-top:16px">إغلاق</button>
+  </div>
+</div>
+<div class="modal hidden" id="libModal">
+  <div class="sheet" style="max-width:520px">
+    <h3>قوالبي</h3>
+    <p class="sub">القوالب المحفوظة على هذا الجهاز. رابط كل قالب ثابت لا يتغيّر.</p>
+    <button class="btn sm" id="newTpl" style="width:100%;justify-content:center;margin-bottom:12px">＋ قالب جديد</button>
+    <div id="libList" style="max-height:360px;overflow:auto"></div>
+    <button class="btn" id="closeLib" style="width:100%;justify-content:center;margin-top:16px">إغلاق</button>
+  </div>
+</div>
 <div class="modal hidden" id="adminLock">
   <div class="sheet" style="max-width:340px;text-align:center">
     <h3>لوحة التحكم</h3>
@@ -398,7 +422,7 @@ const EMBEDDED = (()=>{ try{ return window.self !== window.top; }catch(e){ retur
 const S = {
   mode:"admin", pdfB64:null, doc:null, page:1, pages:0,
   fields:[], sel:null, zoom:1, fitScale:1, drawMode:false,
-  records:[{}], rec:0, licenses:[], openCode:null, passHash:"", tpl:null, linked:false, cDoc:null, cPdfB64:null, cFields:[], cPages:0, cPage:1
+  records:[{}], rec:0, licenses:[], library:[], tplId:null, openCode:null, passHash:"", tpl:null, linked:false, cDoc:null, cPdfB64:null, cFields:[], cPages:0, cPage:1
 };
 
 /* ═══════════════ helpers ═══════════════ */
@@ -1061,21 +1085,33 @@ $("genLic").onclick = async ()=>{
 
 function renderLics(){
   const box=$("licList");
-  if(!S.licenses.length){ box.innerHTML='<p class="hint">لا توجد أكواد بعد.</p>'; return; }
-  box.innerHTML = S.licenses.length>60
-    ? `<p class="hint">معروض ٦٠ من ${S.licenses.length} — استخدم «نسخ الكل» للبقية.</p>` : "";
-  S.licenses.slice(0,60).forEach(l=>{
-    const until = l.activated ? (+new Date(l.activated) + l.days*DAY) : +new Date(l.until);
-    const dead = Date.now() > until;
-    const st = dead ? `منتهي في ${fmtDate(until)}`
-             : l.activated ? `مفعّل · حتى ${fmtDate(until)}`
-             : `غير مستخدم · حتى ${fmtDate(until)}`;
+  const q = ($("licSearch").value||"").trim();
+  const now = Date.now();
+  const withUntil = S.licenses.map(l => ({
+    ...l, endAt: l.activated ? (+new Date(l.activated) + l.days*DAY) : +new Date(l.until)
+  }));
+  const live = withUntil.filter(l => now < l.endAt);
+  $("codesSummary").textContent = S.licenses.length
+    ? `${S.licenses.length} رمز · ${withUntil.filter(l=>l.activated && now<l.endAt).length} مفعّل · ${withUntil.filter(l=>now>=l.endAt).length} منتهٍ · ${live.filter(l=>!l.activated).length} غير مستخدم`
+    : "لا توجد أكواد بعد.";
+  const rows = q ? withUntil.filter(l => l.code.includes(q)) : withUntil;
+  if(!rows.length){ box.innerHTML = '<p class="hint">لا نتائج.</p>'; return; }
+  box.innerHTML = rows.length > 200 ? `<p class="hint">معروض ٢٠٠ من ${rows.length}.</p>` : "";
+  rows.slice(0,200).forEach(l=>{
+    const dead = now > l.endAt;
+    const st = dead ? `منتهٍ في ${fmtDate(l.endAt)}`
+             : l.activated ? `مفعّل · حتى ${fmtDate(l.endAt)}`
+             : `غير مستخدم · حتى ${fmtDate(l.endAt)}`;
     const row=document.createElement("div");
     row.className = "lic" + (dead ? " dead" : l.activated ? " used" : "");
     row.innerHTML = `<span class="c">${l.code}</span><span class="st">${st}</span>`;
     box.appendChild(row);
   });
 }
+$("licSearch").oninput = renderLics;
+$("codesBtn").onclick = ()=>{ renderLics(); $("codesModal").classList.remove("hidden"); };
+$("closeCodes").onclick = ()=> $("codesModal").classList.add("hidden");
+$("codesModal").onclick = e => { if(e.target===$("codesModal")) $("codesModal").classList.add("hidden"); };
 $("refreshLic").onclick = async ()=>{
   if(srvOn()){ await $("srvSave").onclick(); return; }
   if(store.ok){
@@ -1158,6 +1194,91 @@ $("gateGo").onclick = async ()=>{
 };
 $("gateCode").onkeydown = e => { if(e.key==="Enter") $("gateGo").click(); };
 
+/* ═══════════════ template library ═══════════════ */
+// Each saved template keeps its code for life, so its client link never moves.
+async function libLoad(){
+  try{
+    const r = await store.get("library", false);
+    if(r && r.value) S.library = JSON.parse(r.value);
+  }catch(e){}
+  renderLib();
+}
+async function libPersist(){
+  try{ await store.set("library", JSON.stringify(S.library), false); }catch(e){}
+}
+function libUpsert(){
+  if(!S.tplId) return;
+  const path = ($("pdfPath").value||"").trim();
+  const prev = S.library.find(x => x.id === S.tplId);
+  const rec = {
+    id: S.tplId,
+    name: $("tplName").value.trim() || "قالب بدون اسم",
+    pdfUrl: path,
+    pdf: path ? "" : S.pdfB64,       // referenced files are not duplicated here
+    pages: S.pages, fields: S.fields, lock: $("lockTpl").checked,
+    created: prev ? prev.created : Date.now(), updated: Date.now()
+  };
+  S.library = [rec, ...S.library.filter(x => x.id !== S.tplId)];
+  libPersist(); renderLib(); showTplId();
+}
+function renderLib(){
+  const box=$("libList");
+  if(!S.library.length){ box.innerHTML = '<p class="hint">لم تحفظ أي قالب بعد. أنشئ رابط عميل وسيُحفظ تلقائياً.</p>'; return; }
+  box.innerHTML="";
+  S.library.forEach(t=>{
+    const row=document.createElement("div");
+    row.className = "lib" + (t.id === S.tplId ? " on" : "");
+    row.innerHTML = `<div class="lib-main">
+        <div class="lib-name">${escapeHtml(t.name)}</div>
+        <div class="lib-meta">${t.fields.length} حقل · ${t.pages} صفحة · ${t.id} · ${fmtDate(t.updated)}</div>
+      </div>
+      <button class="btn sm" data-act="open">تعديل</button>
+      <button class="btn ghost sm" data-act="del">حذف</button>`;
+    row.querySelector('[data-act="open"]').onclick = ()=> libOpen(t.id);
+    row.querySelector('[data-act="del"]').onclick = async ()=>{
+      S.library = S.library.filter(x => x.id !== t.id);
+      await libPersist(); renderLib(); toast("حُذف من المكتبة");
+    };
+    box.appendChild(row);
+  });
+}
+async function libOpen(id){
+  const t = S.library.find(x => x.id === id);
+  if(!t) return;
+  const btnBox = $("libList"); btnBox.style.opacity = ".5";
+  try{
+    const b64 = t.pdf || (t.pdfUrl ? await fetchPdfB64(t.pdfUrl) : "");
+    if(!b64) throw new Error("لم نجد ملف PDF لهذا القالب");
+    S.pdfB64 = b64; await openDoc();
+    S.tplId = t.id; S.fields = t.fields; S.page = 1; S.sel = null;
+    $("tplName").value = t.name;
+    $("pdfPath").value = t.pdfUrl || "";
+    $("lockTpl").checked = !!t.lock;
+    $("dropZone").classList.add("hidden");
+    $("pageView").classList.remove("hidden");
+    $("libModal").classList.add("hidden");
+    refreshAdmin(); showTplId(); renderLib();
+    toast("فُتح القالب للتعديل");
+  }catch(err){ toast("تعذّر فتح القالب: " + err.message, true); }
+  btnBox.style.opacity = "";
+}
+function showTplId(){
+  $("tplIdNote").textContent = S.tplId
+    ? `رمز هذا القالب ${S.tplId} — رابطه ثابت لا يتغيّر مهما عدّلت.`
+    : "صفحة يفتحها العميل مباشرة، بدون لوحة تحكم.";
+}
+$("libBtn").onclick = ()=>{ renderLib(); $("libModal").classList.remove("hidden"); };
+$("closeLib").onclick = ()=> $("libModal").classList.add("hidden");
+$("libModal").onclick = e => { if(e.target===$("libModal")) $("libModal").classList.add("hidden"); };
+$("newTpl").onclick = ()=>{
+  S.tplId = null; S.fields = []; S.sel = null; S.doc = null; S.pdfB64 = null; S.pages = 0;
+  $("tplName").value = ""; $("pdfPath").value = "";
+  $("pageView").classList.add("hidden");
+  $("dropZone").classList.remove("hidden");
+  $("libModal").classList.add("hidden");
+  buildList(); buildInspector(); showTplId(); renderLib();
+};
+
 /* ═══════════════ template payload ═══════════════ */
 function buildTemplate(code){
   const lock = $("lockTpl").checked;
@@ -1221,7 +1342,9 @@ $("makeLink").onclick = async ()=>{
   if(!S.doc) return toast("ارفع ملف PDF أولاً", true);
   if(!S.fields.length) return toast("أضف حقلاً واحداً على الأقل", true);
 
-  const code = genCode(), tpl = buildTemplate(code), json = JSON.stringify(tpl);
+  if(!S.tplId) S.tplId = genCode();          // assigned once, kept for life
+  const code = S.tplId, tpl = buildTemplate(code), json = JSON.stringify(tpl);
+  libUpsert();
   curCode = code;
   const url = refreshShareLink();
   const hasStore = store.ok;
@@ -1708,6 +1831,8 @@ async function guardAdmin(){
   if(!S.linked){
     await guardAdmin();
     await licLoad();
+    await libLoad();
+    showTplId();
     try{
       if(store.ok){
         const r = await store.get("myopen", false);
