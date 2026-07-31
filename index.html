@@ -1107,7 +1107,9 @@ async function checkCode(code){
   }
   let entry = (await licTableLoad())[code] || null;
   if(!entry){
-    const hit = ((S.tpl && S.tpl.codes) || []).find(x => x.c === code);
+    const hashed = hashPass(code);
+    const hit = ((S.tpl && S.tpl.codes) || [])
+      .find(x => x.h === hashed || x.c === code);   // x.c لقوالب أُنشئت سابقاً
     if(hit) entry = { d: hit.d || 365, u: hit.u };
   }
   if(!entry) return { ok:false, msg:"رمز غير صحيح." };
@@ -1164,12 +1166,12 @@ function buildTemplate(code){
     created:new Date().toISOString(), pages:S.pages, fields:S.fields,
     pdf: path ? "" : S.pdfB64,          // referenced files stay out of the payload
     pdfUrl: path || "",
-    lock, codes: [] };
+    lock, codes: lock ? liveCodes() : [] };
 }
-// A downloaded page is offline, so it must carry the codes with it.
+// Codes travel with the template — the client's device has no copy of them.
 const liveCodes = () => S.licenses
   .filter(l => Date.now() < +new Date(l.until))
-  .map(l => ({ c:l.code, u:l.until, d:l.days }));
+  .map(l => ({ h:hashPass(l.code), u:l.until, d:l.days }));   // hashed: the file is public
 function makeClientHtml(tpl){
   const data = JSON.stringify(tpl).replace(/</g, "\\u003C");
   const boot = "<script>window.__TPL__=" + data
@@ -1249,12 +1251,17 @@ $("makeLink").onclick = async ()=>{
   }catch(e){ $("dlTplJson").classList.add("off"); }
   try{
     if(pageUrl) URL.revokeObjectURL(pageUrl);
-    pageUrl = URL.createObjectURL(new Blob([makeClientHtml(tpl.lock ? { ...tpl, codes: liveCodes() } : tpl)], { type:"application/octet-stream" }));
+    pageUrl = URL.createObjectURL(new Blob([makeClientHtml(tpl)], { type:"application/octet-stream" }));
     const a=$("dlPage"); a.href = pageUrl; a.download = safe + ".html"; a.classList.remove("off");
   }catch(e){ $("dlPage").classList.add("off"); }
 
   $("linkModal").classList.remove("hidden");
   $("shareHint").textContent = "جارٍ حفظ القالب…";
+
+  if(tpl.lock && !tpl.codes.length && !srvOn()){
+    $("shareHint").textContent = "تنبيه: القفل مفعّل ولا يوجد أي رمز صالح. ولّد الأكواد أولاً ثم أنشئ الرابط، وإلا لن يدخل أحد.";
+    return;
+  }
 
   if(!url){
     $("shareHint").textContent = "الصق عنوان الأداة في الحقل أعلاه ليظهر الرابط.";
