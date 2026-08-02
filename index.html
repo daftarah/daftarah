@@ -153,6 +153,7 @@ textarea.in{resize:vertical;min-height:70px;line-height:1.7}
 .toast.on{opacity:1;bottom:32px}
 .toast.err{border-color:var(--danger)}
 .hidden{display:none!important}
+body.gated #adminView,body.gated #modeSwitch,body.gated #clientView{visibility:hidden}
 .modal{position:fixed;inset:0;background:rgba(6,10,16,.74);display:grid;place-items:center;z-index:80;padding:18px}
 .sheet{background:var(--panel);border:1px solid var(--edge2);border-radius:14px;padding:22px;max-width:460px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.6);max-height:88vh;overflow:auto}
 .sheet h3{font-family:var(--display);font-size:18px;margin:0 0 4px}
@@ -171,7 +172,7 @@ input[type=file]{display:none}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
-<body>
+<body class="gated">
 <div class="app">
 <header>
   <div class="brand"><span class="seal">د</span> دفترة <small>كتابة نصوص على ملفات PDF</small></div>
@@ -227,14 +228,6 @@ input[type=file]{display:none}
       <button class="btn sm" id="srvSave" style="width:100%;justify-content:center">حفظ وفحص الاتصال</button>
       <p class="hint" id="srvState">اتركه فارغاً للعمل بدون سيرفر.</p>
 
-      <div class="pane-title" style="padding-inline:0">حماية لوحة التحكم</div>
-      <div class="field">
-        <label class="lbl" for="setPass">رمز الدخول للوحة</label>
-        <input class="in" id="setPass" type="text" placeholder="رمز جديد">
-      </div>
-      <button class="btn sm" id="savePass" style="width:100%;justify-content:center">حفظ رمز اللوحة</button>
-      <p class="hint" id="passState">يُطلب عند فتح لوحة التحكم فقط. لا يؤثر على رابط العميل.</p>
-
     </div>
   </section>
 
@@ -286,7 +279,7 @@ input[type=file]{display:none}
       <div id="gate" class="hidden gatebox">
         <p class="note" style="margin-bottom:14px">هذا النموذج يتطلب رمز تفعيل. أدخل الرمز الذي وصلك.</p>
         <div class="field"><label class="lbl" for="gateCode">رمز التفعيل</label>
-          <input class="in" id="gateCode" inputmode="numeric" maxlength="6" placeholder="0000"
+          <input class="in" id="gateCode" inputmode="numeric" maxlength="14" placeholder="0000 0000"
                  style="font-family:var(--mono);letter-spacing:8px;text-align:center;font-size:22px"></div>
         <button class="btn primary" id="gateGo" style="width:100%;justify-content:center">دخول</button>
         <p class="hint" id="gateMsg" style="text-align:center"></p>
@@ -345,6 +338,32 @@ input[type=file]{display:none}
       <p class="hint" id="licModeNote"></p>
     </div>
     <button class="btn primary" id="genLic" style="width:100%;justify-content:center">توليد أكواد</button>
+    <div class="divider">رمز فوري لعميل</div>
+    <div class="field">
+      <label class="lbl" for="tkName">اسم العميل (للسجل عندك فقط)</label>
+      <input class="in" id="tkName" placeholder="محمد العتيبي">
+    </div>
+    <div class="field">
+      <label class="lbl">طريقة التحديد</label>
+      <div class="seg" id="tkMode">
+        <button data-v="days" aria-pressed="true">مدة بالأيام</button>
+        <button data-v="dates" aria-pressed="false">تاريخ بدء وانتهاء</button>
+      </div>
+    </div>
+    <div class="field" id="tkDaysWrap">
+      <label class="lbl" for="tkDays">المدة (يوم) — تبدأ اليوم</label>
+      <input class="in" type="number" id="tkDays" min="1" max="3650" value="365">
+    </div>
+    <div class="row hidden" id="tkDatesWrap" style="margin-bottom:10px">
+      <div><label class="lbl" for="tkFrom">من تاريخ</label><input class="in" type="date" id="tkFrom" style="direction:ltr"></div>
+      <div><label class="lbl" for="tkTo">إلى تاريخ</label><input class="in" type="date" id="tkTo" style="direction:ltr"></div>
+    </div>
+    <button class="btn primary" id="tkMake" style="width:100%;justify-content:center">إصدار الرمز</button>
+    <div id="tkOut" class="hidden" style="margin-top:10px">
+      <div class="linkbox"><input class="in" id="tkCode" readonly style="font-family:var(--mono);font-size:17px;letter-spacing:2px;direction:ltr;text-align:center"><button class="btn sm" id="tkCopy">نسخ</button></div>
+      <p class="hint" id="tkNote"></p>
+    </div>
+
     <div class="divider">القائمة</div>
     <div class="row" style="margin-bottom:8px">
       <input class="in" id="licSearch" placeholder="بحث عن رمز">
@@ -365,7 +384,7 @@ input[type=file]{display:none}
     <button class="btn" id="closeLib" style="width:100%;justify-content:center;margin-top:16px">إغلاق</button>
   </div>
 </div>
-<div class="modal hidden" id="adminLock">
+<div class="modal" id="adminLock">
   <div class="sheet" style="max-width:340px;text-align:center">
     <h3>لوحة التحكم</h3>
     <p class="sub">هذه اللوحة محمية برمز. أدخله للمتابعة.</p>
@@ -434,7 +453,7 @@ const EMBEDDED = (()=>{ try{ return window.self !== window.top; }catch(e){ retur
 const S = {
   mode:"admin", pdfB64:null, doc:null, page:1, pages:0,
   fields:[], sel:null, zoom:1, fitScale:1, drawMode:false,
-  records:[{}], rec:0, licenses:[], library:[], tplId:null, mark:null, openCode:null, passHash:"", tpl:null, linked:false, cDoc:null, cPdfB64:null, cFields:[], cPages:0, cPage:1
+  records:[{}], rec:0, licenses:[], library:[], tplId:null, salt:"", mark:null, openCode:null, passHash:"", tpl:null, linked:false, cDoc:null, cPdfB64:null, cFields:[], cPages:0, cPage:1
 };
 
 /* ═══════════════ helpers ═══════════════ */
@@ -1111,9 +1130,11 @@ function renderLics(){
   box.innerHTML = rows.length > 200 ? `<p class="hint">معروض ٢٠٠ من ${rows.length}.</p>` : "";
   rows.slice(0,200).forEach(l=>{
     const dead = now > l.endAt;
-    const tag = l.mode === "once" ? " · استخدام واحد" : "";
+    const tag = l.ticket ? " · رمز فوري" : l.mode === "once" ? " · استخدام واحد" : "";
     const openLeft = l.openUntil ? Math.ceil((+new Date(l.openUntil) - now)/DAY) : null;
-    const st = l.used ? "استُخدم وانتهى"
+    const pending = l.from && Date.now() < +new Date(l.from);
+    const st = pending ? `يبدأ ${fmtDate(l.from)} · حتى ${fmtDate(l.endAt)}`
+             : l.used ? "استُخدم وانتهى"
              : dead ? `منتهٍ في ${fmtDate(l.endAt)}`
              : l.activated ? `مفعّل · حتى ${fmtDate(l.endAt)}${tag}`
              : (openLeft !== null && openLeft <= 0) ? "انتهت مهلة تفعيله"
@@ -1160,6 +1181,49 @@ $("delExpired").onclick = ()=>{
   if(!gone.length) return toast("لا توجد أكواد منتهية", true);
   removeCodes(gone);
 };
+$("tkMode").onclick = e => {
+  const b = e.target.closest("button"); if(!b) return;
+  const dates = b.dataset.v === "dates";
+  [...$("tkMode").children].forEach(x => x.setAttribute("aria-pressed", x === b));
+  $("tkDaysWrap").classList.toggle("hidden", dates);
+  $("tkDatesWrap").classList.toggle("hidden", !dates);
+  if(dates && !$("tkFrom").value){
+    const t = new Date();
+    $("tkFrom").value = t.toISOString().slice(0,10);
+    $("tkTo").value = new Date(t.getTime() + 365*DAY).toISOString().slice(0,10);
+  }
+};
+$("tkMake").onclick = ()=>{
+  if(!S.tplId){ S.tplId = genCode(); showTplId(); }
+  if(!S.salt){ S.salt = genCode() + genCode(); libUpsert(); }
+  const name = ($("tkName").value||"").trim();
+  const byDates = $("tkDatesWrap").classList.contains("hidden") === false;
+
+  let start = null, end;
+  if(byDates){
+    if(!$("tkFrom").value || !$("tkTo").value) return toast("حدّد التاريخين", true);
+    start = new Date($("tkFrom").value + "T00:00:00").getTime();
+    end   = new Date($("tkTo").value + "T00:00:00").getTime();
+    if(end <= start) return toast("تاريخ الانتهاء يجب أن يلي البداية", true);
+  } else {
+    end = Date.now() + clamp(+$("tkDays").value||365, 1, 3650)*DAY;
+  }
+
+  const code = shortMake(end, start, S.salt);
+  $("tkCode").value = fmtCode(code);
+  $("tkOut").classList.remove("hidden");
+  $("tkNote").textContent = (start ? `من ${fmtDate(start)} ` : "صالح ")
+    + `حتى ${fmtDate(end)} · لا يحتاج رفع الملف من جديد`;
+  S.licenses = [{ code: fmtCode(code), days: Math.round((end - (start||Date.now()))/DAY), label:name,
+                  created:new Date().toISOString(), from: start ? new Date(start).toISOString() : null,
+                  until:new Date(end).toISOString(), activated:null, ticket:true },
+                ...S.licenses.filter(l => l.code !== code)];
+  libUpsert(); renderLics();
+};
+$("tkCopy").onclick = async ()=>{
+  try{ await navigator.clipboard.writeText($("tkCode").value.replace(/\s/g,"")); toast("نُسخ الرمز"); }
+  catch(e){ $("tkCode").select(); document.execCommand("copy"); toast("نُسخ الرمز"); }
+};
 $("licSearch").oninput = renderLics;
 $("licMode").onchange = ()=>{
   $("licModeNote").textContent = $("licMode").value === "once"
@@ -1196,6 +1260,84 @@ $("copyLics").onclick = async ()=>{
 
 // Validation: shared storage gives true first-use dating; without it the code
 // runs from its generation date, which is embedded in the template.
+// A self-contained ticket: NAME-YYMMDD-CHECK, verified by arithmetic alone.
+// Nothing is stored on the client, so clearing the browser changes nothing and
+// a shared ticket expires on the same day for everyone who holds it.
+const B32 = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+function tSign(body, salt){
+  let h = 5381;
+  const str = body + "|" + salt;
+  for(let i=0;i<str.length;i++) h = ((h*33) ^ str.charCodeAt(i)) >>> 0;
+  // Unsigned shifts: a signed >> turns large hashes negative and yields undefined.
+  return B32[h % 31] + B32[(h >>> 5) % 31] + B32[(h >>> 10) % 31] + B32[(h >>> 15) % 31];
+}
+const ymd6 = ms => { const d=new Date(ms);
+  return String(d.getFullYear()).slice(2) + String(d.getMonth()+1).padStart(2,"0")
+       + String(d.getDate()).padStart(2,"0"); };
+const fromYmd6 = (v, endOfDay) => {
+  const y = 2000 + (+v.slice(0,2)), mo = (+v.slice(2,4)) - 1, da = +v.slice(4,6);
+  return endOfDay ? new Date(y,mo,da,23,59,59).getTime() : new Date(y,mo,da,0,0,0).getTime();
+};
+// Short numeric ticket. 8 digits when only an end date matters, 12 when a
+// start date is set. The dates live inside the code, so nothing is stored on
+// the client and clearing the browser changes nothing.
+const EPOCH = Date.UTC(2026,0,1);
+const dayNo = ms => Math.floor((ms - EPOCH) / DAY);
+const dayMs = n  => EPOCH + n * DAY;
+const pad4  = n  => String(Math.max(0, Math.min(9999, n))).padStart(4,"0");
+function nSign(body, salt){
+  let h = 5381;
+  const str = body + "|" + salt;
+  for(let i=0;i<str.length;i++) h = ((h*33) ^ str.charCodeAt(i)) >>> 0;
+  return String(h % 10000).padStart(4,"0");
+}
+function shortMake(endMs, startMs, salt){
+  if(startMs){
+    const body = pad4(dayNo(startMs)) + pad4(dayNo(endMs));
+    return body + nSign("S" + body, salt);
+  }
+  const body = pad4(dayNo(endMs));
+  return body + nSign("E" + body, salt);
+}
+function shortCheck(digits, salt){
+  if(digits.length === 8){
+    const body = digits.slice(0,4);
+    if(nSign("E" + body, salt) !== digits.slice(4)) return { ok:false, msg:"رمز غير صحيح." };
+    return { ok:true, from:null, until: dayMs(+body) + DAY - 1000 };
+  }
+  if(digits.length === 12){
+    const body = digits.slice(0,8);
+    if(nSign("S" + body, salt) !== digits.slice(8)) return { ok:false, msg:"رمز غير صحيح." };
+    return { ok:true, from: dayMs(+body.slice(0,4)), until: dayMs(+body.slice(4,8)) + DAY - 1000 };
+  }
+  return null;
+}
+const fmtCode = c => c.length === 8 ? c.slice(0,4)+" "+c.slice(4)
+                   : c.length === 12 ? c.slice(0,4)+" "+c.slice(4,8)+" "+c.slice(8) : c;
+
+// NAME-START-END-CHECK when a window is fixed, NAME-END-CHECK when it is not.
+function ticketMake(label, endMs, salt, startMs){
+  const tag = (label||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6) || "AA";
+  const body = startMs
+    ? tag + "-" + ymd6(startMs) + "-" + ymd6(endMs)
+    : tag + "-" + ymd6(endMs);
+  return body + "-" + tSign(body, salt);
+}
+function ticketCheck(input, salt){
+  const t = (input||"").toUpperCase().replace(/\s/g,"");
+  const m = t.match(/^([A-Z0-9]{1,6})-(\d{6})(?:-(\d{6}))?-([A-Z0-9]{4})$/);
+  if(!m) return { ok:false, msg:"صيغة الرمز غير صحيحة." };
+  const body = m[3] ? `${m[1]}-${m[2]}-${m[3]}` : `${m[1]}-${m[2]}`;
+  if(tSign(body, salt) !== m[4]) return { ok:false, msg:"رمز غير صحيح." };
+  const from  = m[3] ? fromYmd6(m[2], false) : null;
+  const until = fromYmd6(m[3] || m[2], true);
+  const now = Date.now();
+  if(from && now < from)
+    return { ok:false, msg:"هذا الرمز يبدأ في " + fmtDate(from) + "." };
+  if(now > until) return { ok:false, msg:"انتهت صلاحية هذا الرمز." };
+  return { ok:true, until, from, label:m[1] };
+}
+
 const actKey = t => "act:" + (t && t.code ? t.code : "x");
 async function actRead(t){
   try{
@@ -1213,6 +1355,22 @@ async function deviceId(){
   return id;
 }
 async function checkCode(code){
+  const salt = (S.tpl && S.tpl.salt) || "";
+  const digits = (code||"").replace(/\D/g,"");
+  if(salt && (digits.length === 8 || digits.length === 12)){
+    const r = shortCheck(digits, salt);
+    if(r){
+      if(!r.ok) return r;
+      if(r.from && Date.now() < r.from)
+        return { ok:false, msg:"هذا الرمز يبدأ في " + fmtDate(r.from) + "." };
+      if(Date.now() > r.until) return { ok:false, msg:"انتهت صلاحية هذا الرمز." };
+      return { ok:true, until:r.until, ticket:true };
+    }
+  }
+  if(salt && /^[A-Za-z0-9]{1,6}-\d{6}(-\d{6})?-[A-Za-z0-9]{4}$/.test((code||"").trim())){
+    const t = ticketCheck(code, salt);
+    return t.ok ? { ok:true, until:t.until, label:t.label, ticket:true } : t;
+  }
   if(srvOn()){
     try{
       const r = await srvCall({ a:"check", code, dev: await deviceId() });
@@ -1263,7 +1421,7 @@ $("gateGo").onclick = async ()=>{
   if(r.ok){
     const hashed = hashPass(code);
     const hit = ((S.tpl && S.tpl.codes) || []).find(x => x.h === hashed || x.c === code);
-    S.mark = { code, label: (hit && hit.n) || "" };
+    S.mark = { code, label: (hit && hit.n) || r.label || "" };
     if(r.fresh){                       // first activation on this device
       await store.set(actKey(S.tpl), JSON.stringify({
         code, label: S.mark.label, activated: Date.now(), days: r.days || 365
@@ -1297,6 +1455,7 @@ function libUpsert(){
     pdfUrl: path,
     pdf: path ? "" : S.pdfB64,       // referenced files are not duplicated here
     pages: S.pages, fields: S.fields, lock: $("lockTpl").checked, mark: $("markTpl").checked,
+    salt: S.salt || "",
     licenses: S.licenses,
     created: prev ? prev.created : Date.now(), updated: Date.now()
   };
@@ -1333,7 +1492,7 @@ async function libOpen(id){
     if(!b64) throw new Error("لم نجد ملف PDF لهذا القالب");
     S.pdfB64 = b64; await openDoc();
     S.tplId = t.id; S.fields = t.fields; S.page = 1; S.sel = null;
-    S.licenses = t.licenses || [];
+    S.licenses = t.licenses || []; S.salt = t.salt || "";
     $("tplName").value = t.name;
     $("pdfPath").value = t.pdfUrl || "";
     $("lockTpl").checked = !!t.lock;
@@ -1356,7 +1515,7 @@ $("closeLib").onclick = ()=> $("libModal").classList.add("hidden");
 $("libModal").onclick = e => { if(e.target===$("libModal")) $("libModal").classList.add("hidden"); };
 $("newTpl").onclick = ()=>{
   S.tplId = null; S.fields = []; S.sel = null; S.doc = null; S.pdfB64 = null; S.pages = 0;
-  S.licenses = [];
+  S.licenses = []; S.salt = "";
   $("tplName").value = ""; $("pdfPath").value = "";
   $("pageView").classList.add("hidden");
   $("dropZone").classList.remove("hidden");
@@ -1372,7 +1531,8 @@ function buildTemplate(code){
     created:new Date().toISOString(), pages:S.pages, fields:S.fields,
     pdf: path ? "" : S.pdfB64,          // referenced files stay out of the payload
     pdfUrl: path || "",
-    lock, mark: $("markTpl").checked, codes: lock ? liveCodes() : [] };
+    lock, mark: $("markTpl").checked, salt: S.salt || "",
+    codes: lock ? liveCodes() : [] };
 }
 // Codes travel with the template — the client's device has no copy of them.
 const liveCodes = () => S.licenses
@@ -1848,46 +2008,32 @@ async function exportPdf(){
 
 /* ═══════════════ admin lock ═══════════════ */
 // Obfuscation, not cryptography — it stops a curious client, nothing more.
-// First-run passcode. Change it here, or set your own from the panel.
+/* ═══════════════════════════════════════════════════════
+   رمز لوحة التحكم — يُغيَّر من هذا السطر فقط ثم يُرفع الملف
+   ═══════════════════════════════════════════════════════ */
 const BOOT_PASS = "1416";
 const hashPass = str => {
   let h = 5381;
   for(let i=0;i<str.length;i++) h = ((h*33) ^ str.charCodeAt(i)) >>> 0;
   return h.toString(36);
 };
-$("savePass").onclick = async ()=>{
-  const v = ($("setPass").value||"").trim();
-  if(!v) return toast("لا يمكن ترك اللوحة بدون رمز", true);
-  S.passHash = hashPass(v);
-  await store.set("adminpass", S.passHash, true);
-  await store.set("adminok", S.passHash, false);
-  $("setPass").value = "";
-  $("passState").textContent = "اللوحة محمية برمزك. سيُطلب عند فتحها من أي جهاز.";
-  toast("تم تعيين رمز اللوحة");
-};
+function openPanel(){
+  document.body.classList.remove("gated");
+  $("adminLock").classList.add("hidden");
+}
 $("adminGo").onclick = async ()=>{
   const v = ($("adminPassIn").value||"").trim();
   if(hashPass(v) === S.passHash){
     await store.set("adminok", S.passHash, false);
-    $("adminLock").classList.add("hidden");
-  } else { $("adminMsg").textContent = "رمز غير صحيح."; }
+    openPanel();
+  } else { $("adminMsg").textContent = "رمز غير صحيح."; $("adminPassIn").value=""; }
 };
 $("adminPassIn").onkeydown = e => { if(e.key==="Enter") $("adminGo").click(); };
 
 async function guardAdmin(){
-  let ph = window.__PASS__ || null;
-  if(!ph){
-    const r = await store.get("adminpass", true);
-    if(r && r.value) ph = r.value;
-  }
-  const boot = hashPass(BOOT_PASS);
-  S.passHash = ph || boot;                     // never unlocked by default
-  $("passState").textContent = S.passHash === boot
-    ? "اللوحة تعمل بالرمز الافتراضي — غيّره قبل النشر."
-    : "اللوحة محمية برمزك.";
+  S.passHash = hashPass(BOOT_PASS);            // the file is the only source
   const mine = await store.get("adminok", false);
-  if(mine && mine.value === S.passHash) return;
-  $("adminLock").classList.remove("hidden");
+  if(mine && mine.value === S.passHash){ openPanel(); return; }
   $("adminPassIn").focus();
 }
 
@@ -1904,6 +2050,7 @@ async function guardAdmin(){
   }catch(e){}
   if(window.__TPL__){
     S.linked = true;
+    openPanel();
     $("modeSwitch").classList.add("hidden");
     setMode("client");
     try{ await useTemplate(window.__TPL__); }
@@ -1917,6 +2064,7 @@ async function guardAdmin(){
     if(sm){ try{ srv.url = decodeURIComponent(sm[1]); }catch(e){} }
     if(m){
       S.linked = true;
+      openPanel();
       $("modeSwitch").classList.add("hidden");
       setMode("client");
       $("codeEntry").classList.add("hidden");     // the link already names the template
