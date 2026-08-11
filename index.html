@@ -346,11 +346,17 @@ input[type=file]{display:none}
     <div class="field">
       <label class="lbl">طريقة التحديد</label>
       <div class="seg" id="tkMode">
-        <button data-v="days" aria-pressed="true">مدة بالأيام</button>
-        <button data-v="dates" aria-pressed="false">تاريخ بدء وانتهاء</button>
+        <button data-v="season" aria-pressed="true">تاريخ موحّد</button>
+        <button data-v="days" aria-pressed="false">مدة بالأيام</button>
+        <button data-v="dates" aria-pressed="false">بدء وانتهاء</button>
       </div>
     </div>
-    <div class="field" id="tkDaysWrap">
+    <div class="field" id="tkSeasonWrap">
+      <label class="lbl" for="tkSeason">تنتهي كل الأكواد في</label>
+      <input class="in" type="date" id="tkSeason" style="direction:ltr">
+      <p class="hint">يُحفظ مع القالب، فكل رمز تصدره ينتهي في هذا اليوم.</p>
+    </div>
+    <div class="field hidden" id="tkDaysWrap">
       <label class="lbl" for="tkDays">المدة (يوم) — تبدأ اليوم</label>
       <input class="in" type="number" id="tkDays" min="1" max="3650" value="365">
     </div>
@@ -358,9 +364,14 @@ input[type=file]{display:none}
       <div><label class="lbl" for="tkFrom">من تاريخ</label><input class="in" type="date" id="tkFrom" style="direction:ltr"></div>
       <div><label class="lbl" for="tkTo">إلى تاريخ</label><input class="in" type="date" id="tkTo" style="direction:ltr"></div>
     </div>
-    <button class="btn primary" id="tkMake" style="width:100%;justify-content:center">إصدار الرمز</button>
+    <div class="field">
+      <label class="lbl" for="tkCount">عدد الأكواد</label>
+      <input class="in" type="number" id="tkCount" min="1" max="500" value="1">
+    </div>
+    <button class="btn primary" id="tkMake" style="width:100%;justify-content:center">إصدار الأكواد</button>
     <div id="tkOut" class="hidden" style="margin-top:10px">
-      <div class="linkbox"><input class="in" id="tkCode" readonly style="font-family:var(--mono);font-size:17px;letter-spacing:2px;direction:ltr;text-align:center"><button class="btn sm" id="tkCopy">نسخ</button></div>
+      <textarea class="in" id="tkCode" readonly rows="3" style="font-family:var(--mono);font-size:15px;letter-spacing:1px;direction:ltr;text-align:center"></textarea>
+      <button class="btn sm" id="tkCopy" style="width:100%;justify-content:center;margin-top:6px">نسخ</button>
       <p class="hint" id="tkNote"></p>
     </div>
 
@@ -453,7 +464,7 @@ const EMBEDDED = (()=>{ try{ return window.self !== window.top; }catch(e){ retur
 const S = {
   mode:"admin", pdfB64:null, doc:null, page:1, pages:0,
   fields:[], sel:null, zoom:1, fitScale:1, drawMode:false,
-  records:[{}], rec:0, licenses:[], library:[], tplId:null, salt:"", mark:null, openCode:null, passHash:"", tpl:null, linked:false, cDoc:null, cPdfB64:null, cFields:[], cPages:0, cPage:1
+  records:[{}], rec:0, licenses:[], library:[], tplId:null, salt:"", serial:0, season:"", mark:null, openCode:null, passHash:"", tpl:null, linked:false, cDoc:null, cPdfB64:null, cFields:[], cPages:0, cPage:1
 };
 
 /* ═══════════════ helpers ═══════════════ */
@@ -1131,7 +1142,7 @@ function renderLics(){
   rows.slice(0,200).forEach(l=>{
     const dead = now > l.endAt;
     const tag = l.ticket ? " · رمز فوري" : l.mode === "once" ? " · استخدام واحد" : "";
-    const openLeft = l.openUntil ? Math.ceil((+new Date(l.openUntil) - now)/DAY) : null;
+    const openLeft = (!l.ticket && l.openUntil) ? Math.ceil((+new Date(l.openUntil) - now)/DAY) : null;
     const pending = l.from && Date.now() < +new Date(l.from);
     const st = pending ? `يبدأ ${fmtDate(l.from)} · حتى ${fmtDate(l.endAt)}`
              : l.used ? "استُخدم وانتهى"
@@ -1145,7 +1156,11 @@ function renderLics(){
     const nm = document.createElement("input");
     nm.className = "in"; nm.placeholder = "اسم العميل"; nm.value = l.label || "";
     nm.style.cssText = "flex:0 0 120px;padding:4px 8px;font-size:12px";
-    nm.onchange = ()=>{ l.label = nm.value.trim(); libUpsert(); };
+    nm.onchange = ()=>{
+      const t = S.licenses.find(x => x.code === l.code);
+      if(t) t.label = nm.value.trim();
+      libUpsert();
+    };
     row.appendChild(nm);
     if(srvOn() && l.dev){
       const ub = document.createElement("button");
@@ -1181,26 +1196,35 @@ $("delExpired").onclick = ()=>{
   if(!gone.length) return toast("لا توجد أكواد منتهية", true);
   removeCodes(gone);
 };
-$("tkMode").onclick = e => {
-  const b = e.target.closest("button"); if(!b) return;
-  const dates = b.dataset.v === "dates";
-  [...$("tkMode").children].forEach(x => x.setAttribute("aria-pressed", x === b));
-  $("tkDaysWrap").classList.toggle("hidden", dates);
-  $("tkDatesWrap").classList.toggle("hidden", !dates);
-  if(dates && !$("tkFrom").value){
+function tkSetMode(v){
+  [...$("tkMode").children].forEach(x => x.setAttribute("aria-pressed", x.dataset.v === v));
+  $("tkSeasonWrap").classList.toggle("hidden", v !== "season");
+  $("tkDaysWrap").classList.toggle("hidden", v !== "days");
+  $("tkDatesWrap").classList.toggle("hidden", v !== "dates");
+  if(v === "dates" && !$("tkFrom").value){
     const t = new Date();
     $("tkFrom").value = t.toISOString().slice(0,10);
     $("tkTo").value = new Date(t.getTime() + 365*DAY).toISOString().slice(0,10);
   }
-};
+  if(v === "season" && !$("tkSeason").value)
+    $("tkSeason").value = new Date(Date.now() + 365*DAY).toISOString().slice(0,10);
+}
+$("tkMode").onclick = e => { const b = e.target.closest("button"); if(b) tkSetMode(b.dataset.v); };
+$("tkSeason").onchange = ()=>{ S.season = $("tkSeason").value; libUpsert(); };
 $("tkMake").onclick = ()=>{
   if(!S.tplId){ S.tplId = genCode(); showTplId(); }
   if(!S.salt){ S.salt = genCode() + genCode(); libUpsert(); }
   const name = ($("tkName").value||"").trim();
-  const byDates = $("tkDatesWrap").classList.contains("hidden") === false;
+  const n = clamp(+$("tkCount").value||1, 1, 500);
+  const mode = [...$("tkMode").children].find(x => x.getAttribute("aria-pressed") === "true").dataset.v;
 
   let start = null, end;
-  if(byDates){
+  if(mode === "season"){
+    if(!$("tkSeason").value) return toast("حدّد تاريخ الانتهاء الموحّد", true);
+    end = new Date($("tkSeason").value + "T00:00:00").getTime();
+    if(end <= Date.now()) return toast("التاريخ الموحّد يجب أن يكون في المستقبل", true);
+    S.season = $("tkSeason").value;
+  } else if(mode === "dates"){
     if(!$("tkFrom").value || !$("tkTo").value) return toast("حدّد التاريخين", true);
     start = new Date($("tkFrom").value + "T00:00:00").getTime();
     end   = new Date($("tkTo").value + "T00:00:00").getTime();
@@ -1209,19 +1233,36 @@ $("tkMake").onclick = ()=>{
     end = Date.now() + clamp(+$("tkDays").value||365, 1, 3650)*DAY;
   }
 
-  const code = shortMake(end, start, S.salt);
-  $("tkCode").value = fmtCode(code);
+  const taken = new Set(S.licenses.map(l => (l.code||"").replace(/\D/g,"")));
+  const made = [];
+  for(let i=0; i<n; i++){
+    let raw, serial = S.serial || 0, guard = 0;
+    do{
+      serial = (serial + 1) % 1000;
+      raw = shortMake(end, start, S.salt, serial);
+      guard++;
+    } while(taken.has(raw) && guard < 1000);
+    S.serial = serial; taken.add(raw);
+    made.push({
+      code: fmtCode(raw),
+      label: n === 1 ? name : (name ? `${name} ${i+1}` : ""),
+      days: Math.round((end - (start || Date.now()))/DAY),
+      created: new Date().toISOString(),
+      from: start ? new Date(start).toISOString() : null,
+      until: new Date(end).toISOString(),
+      activated: null, ticket: true
+    });
+  }
+
+  $("tkCode").value = made.map(m => m.code).join("\n");
   $("tkOut").classList.remove("hidden");
-  $("tkNote").textContent = (start ? `من ${fmtDate(start)} ` : "صالح ")
-    + `حتى ${fmtDate(end)} · لا يحتاج رفع الملف من جديد`;
-  S.licenses = [{ code: fmtCode(code), days: Math.round((end - (start||Date.now()))/DAY), label:name,
-                  created:new Date().toISOString(), from: start ? new Date(start).toISOString() : null,
-                  until:new Date(end).toISOString(), activated:null, ticket:true },
-                ...S.licenses.filter(l => l.code !== code)];
+  $("tkNote").textContent = `${made.length} رمز · ` + (start ? `من ${fmtDate(start)} ` : "صالح ")
+    + `حتى ${fmtDate(end)} · لا يحتاج رفع الملف`;
+  S.licenses = made.concat(S.licenses);
   libUpsert(); renderLics();
 };
 $("tkCopy").onclick = async ()=>{
-  try{ await navigator.clipboard.writeText($("tkCode").value.replace(/\s/g,"")); toast("نُسخ الرمز"); }
+  try{ await navigator.clipboard.writeText($("tkCode").value); toast("نُسخ"); }
   catch(e){ $("tkCode").select(); document.execCommand("copy"); toast("نُسخ الرمز"); }
 };
 $("licSearch").oninput = renderLics;
@@ -1231,6 +1272,7 @@ $("licMode").onchange = ()=>{
     : "";
 };
 $("codesBtn").onclick = ()=>{
+  if(S.season) $("tkSeason").value = S.season;
   $("licModeNote").textContent = "";
   $("licMode").disabled = !srvOn();
   $("codesMode").textContent = srvOn()
@@ -1291,15 +1333,29 @@ function nSign(body, salt){
   for(let i=0;i<str.length;i++) h = ((h*33) ^ str.charCodeAt(i)) >>> 0;
   return String(h % 10000).padStart(4,"0");
 }
-function shortMake(endMs, startMs, salt){
+const pad3 = n => String(Math.max(0, Math.min(999, n))).padStart(3,"0");
+// A serial is folded in so two codes issued for the same dates never collide.
+function shortMake(endMs, startMs, salt, serial){
+  const sn = pad3(serial);
   if(startMs){
-    const body = pad4(dayNo(startMs)) + pad4(dayNo(endMs));
-    return body + nSign("S" + body, salt);
+    const body = pad4(dayNo(startMs)) + pad4(dayNo(endMs)) + sn;
+    return body + nSign("S" + body, salt);                 // 15 digits
   }
-  const body = pad4(dayNo(endMs));
-  return body + nSign("E" + body, salt);
+  const body = pad4(dayNo(endMs)) + sn;
+  return body + nSign("E" + body, salt);                   // 11 digits
 }
 function shortCheck(digits, salt){
+  if(digits.length === 11){
+    const body = digits.slice(0,7);
+    if(nSign("E" + body, salt) !== digits.slice(7)) return { ok:false, msg:"رمز غير صحيح." };
+    return { ok:true, from:null, until: dayMs(+body.slice(0,4)) + DAY - 1000 };
+  }
+  if(digits.length === 15){
+    const body = digits.slice(0,11);
+    if(nSign("S" + body, salt) !== digits.slice(11)) return { ok:false, msg:"رمز غير صحيح." };
+    return { ok:true, from: dayMs(+body.slice(0,4)), until: dayMs(+body.slice(4,8)) + DAY - 1000 };
+  }
+  // ── legacy codes issued before serials existed ──
   if(digits.length === 8){
     const body = digits.slice(0,4);
     if(nSign("E" + body, salt) !== digits.slice(4)) return { ok:false, msg:"رمز غير صحيح." };
@@ -1312,8 +1368,7 @@ function shortCheck(digits, salt){
   }
   return null;
 }
-const fmtCode = c => c.length === 8 ? c.slice(0,4)+" "+c.slice(4)
-                   : c.length === 12 ? c.slice(0,4)+" "+c.slice(4,8)+" "+c.slice(8) : c;
+const fmtCode = c => c.replace(/\D/g,"").replace(/(\d{4})(?=\d)/g, "$1 ").trim();
 
 // NAME-START-END-CHECK when a window is fixed, NAME-END-CHECK when it is not.
 function ticketMake(label, endMs, salt, startMs){
@@ -1357,7 +1412,7 @@ async function deviceId(){
 async function checkCode(code){
   const salt = (S.tpl && S.tpl.salt) || "";
   const digits = (code||"").replace(/\D/g,"");
-  if(salt && (digits.length === 8 || digits.length === 12)){
+  if(salt && [8,11,12,15].includes(digits.length)){
     const r = shortCheck(digits, salt);
     if(r){
       if(!r.ok) return r;
@@ -1408,6 +1463,7 @@ function showSubBar(until){
   if(!until){ bar.classList.add("hidden"); return; }
   const left = Math.ceil((until - Date.now())/DAY);
   $("subDate").textContent = fmtDate(until);
+  $("subBar").querySelector(".sb-l").textContent = "ينتهي الاشتراك في";
   $("subLeft").textContent = left > 0 ? `متبقٍ ${left} يوم` : "انتهى الاشتراك";
   bar.classList.remove("hidden","warn","dead");
   if(left <= 0) bar.classList.add("dead");
@@ -1456,7 +1512,7 @@ function libUpsert(){
     pdf: path ? "" : S.pdfB64,       // referenced files are not duplicated here
     pages: S.pages, fields: S.fields, lock: $("lockTpl").checked, mark: $("markTpl").checked,
     salt: S.salt || "",
-    licenses: S.licenses,
+    licenses: S.licenses, serial: S.serial || 0, season: S.season || "",
     created: prev ? prev.created : Date.now(), updated: Date.now()
   };
   S.library = [rec, ...S.library.filter(x => x.id !== S.tplId)];
@@ -1492,7 +1548,8 @@ async function libOpen(id){
     if(!b64) throw new Error("لم نجد ملف PDF لهذا القالب");
     S.pdfB64 = b64; await openDoc();
     S.tplId = t.id; S.fields = t.fields; S.page = 1; S.sel = null;
-    S.licenses = t.licenses || []; S.salt = t.salt || "";
+    S.licenses = t.licenses || []; S.salt = t.salt || ""; S.serial = t.serial || 0; S.season = t.season || "";
+    $("tkSeason").value = S.season;
     $("tplName").value = t.name;
     $("pdfPath").value = t.pdfUrl || "";
     $("lockTpl").checked = !!t.lock;
@@ -1515,7 +1572,7 @@ $("closeLib").onclick = ()=> $("libModal").classList.add("hidden");
 $("libModal").onclick = e => { if(e.target===$("libModal")) $("libModal").classList.add("hidden"); };
 $("newTpl").onclick = ()=>{
   S.tplId = null; S.fields = []; S.sel = null; S.doc = null; S.pdfB64 = null; S.pages = 0;
-  S.licenses = []; S.salt = "";
+  S.licenses = []; S.salt = ""; S.serial = 0; S.season = ""; $("tkSeason").value = "";
   $("tplName").value = ""; $("pdfPath").value = "";
   $("pageView").classList.add("hidden");
   $("dropZone").classList.remove("hidden");
